@@ -1,6 +1,6 @@
 /* AEFI – Adverse Event Following Immunization (mobile prototype)
  *
- * Home → Report AEFI → Child Details → AEFI Details → AEFI Reported
+ * Home → Report AEFI → Child Details → AEFI Details → Summary → AEFI Reported
  *
  * The polio Outside Household screens below are kept from the polio-app copy.
  *
@@ -78,6 +78,7 @@
     success:   { name: "Vaccination Successful", desc: () => "Vaccination has been recorded successfully." },
     aefiChild:   { name: "Child Details", desc: () => "Add details of the child who had the adverse event." },
     aefiDetails: { name: "AEFI Details", desc: () => "Record the vaccine given and the adverse event that followed." },
+    aefiSummary: { name: "Summary", desc: () => "Check the details before you submit the report." },
     aefiSuccess: { name: "AEFI Reported", desc: () => "The adverse event has been reported successfully." }
   };
   const screenName = (route, kind) => { const n = SCREENS[route].name; return typeof n === "function" ? n(kind) : n; };
@@ -153,7 +154,9 @@
   }
   // Child name, DOB/age and gender live in state.child so the shared Child Details fields work unchanged.
   const freshAefi = () => ({ vaccine: "", vaxDate: "", onsetDate: "", type: "", desc: "" });
-  const MAX_AGE_MONTHS = 59;   // polio target group: under 5 years
+  const MAX_AGE_MONTHS = 59;
+  // "2026-10-10" → "10 Oct 2026"
+  const shortDate = iso => iso ? new Date(`${iso}T00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";   // polio target group: under 5 years
 
   const ICON = {
     back: '<svg viewBox="0 0 8 10" aria-hidden="true"><path d="M7 0v10L0 5z" fill="currentColor"/></svg>',
@@ -350,7 +353,31 @@
             ${radioGroup({ id: "aefi-type", legend: "AEFI type", value: a.type, options: AEFI_TYPES, toggle: true, contained: true, required: true })}
             ${textArea({ id: "aefi-desc", label: "Description", value: a.desc, required: true, placeholder: "Describe the symptoms and what happened" })}
           </div>`,
-        footer: `<button class="btn btn-primary" data-action="aefi-submit">Submit</button>`
+        footer: `<button class="btn btn-primary" data-action="aefi-submit">Continue</button>`
+      };
+    },
+
+    aefiSummary() {
+      // Tag and title sit in their own white header card, details in a second card (per the Summary reference).
+      const a = state.aefi, c = state.child;
+      return {
+        body: `<div class="card summary-head">
+            ${tag(ASSIGNED_AREA)}
+            ${title("Summary")}
+          </div>
+          <div class="card">
+            ${pairs([
+              ["Child name", c.name.trim()],
+              ["Age", ageText(c)],
+              ["Gender", c.gender],
+              ["Vaccine administered", a.vaccine],
+              ["Date of vaccination", shortDate(a.vaxDate)],
+              ["Date of AEFI onset", shortDate(a.onsetDate)],
+              ["AEFI type", a.type],
+              ["Description", a.desc.trim()]
+            ])}
+          </div>`,
+        footer: `<button class="btn btn-primary" data-action="aefi-confirm">Submit</button>`
       };
     },
 
@@ -580,7 +607,7 @@
           <button class="back-btn" data-action="back">${ICON.back}Back</button>
           <button class="help-btn" data-action="help" aria-haspopup="dialog">Help${ICON.help}</button>
         </header>
-        <div class="body body-${state.route}" id="screen-body">${tag(view.tag)}${withDescription(view.body)}</div>`;
+        <div class="body body-${state.route}" id="screen-body">${view.tag ? tag(view.tag) : ""}${withDescription(view.body)}</div>`;
     $phone.innerHTML = `
       <div class="status-bar" aria-hidden="true"></div>
       ${chrome}
@@ -604,7 +631,7 @@
 
   // Page description (from the APK screen list) sits directly under the page title.
   function withDescription(body) {
-    if (state.route === "success" || state.route === "aefiSuccess") return body;   // description lives inside the success panel
+    if (["success", "aefiSuccess", "aefiSummary"].includes(state.route)) return body;   // description lives inside the success panel
     const desc = `<p class="page-desc" id="page-desc">${esc(SCREENS[state.route].desc(state.kind))}</p>`;
     return body.replace("</h1>", `</h1>${desc}`);
   }
@@ -700,7 +727,10 @@
         "aefi-type": a.type ? "" : "Select the AEFI type",
         "aefi-desc": a.desc.trim() ? "" : "Enter a description of the event"
       });
-      if (!ok) return;
+      if (ok) go("aefiSummary");
+    },
+    "aefi-confirm"() {
+      const a = state.aefi;
       (store.aefiReports || (store.aefiReports = [])).unshift({ child: { ...state.child }, ...a, reportedAt: new Date().toISOString() });
       save();
       state.history = ["home"];

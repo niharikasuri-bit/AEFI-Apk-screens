@@ -340,3 +340,9 @@ body { display: flex; align-items: center; justify-content: center; min-height: 
 /* ---------- Textarea (AEFI description) ---------- */
 .textarea { height: auto; min-height: 96px; padding: 8px 12px; resize: vertical; line-height: 22px; display: block; }
 .textarea:focus, .textarea.invalid { padding: 7px 11px; }
+
+/* ---------- Summary ---------- */
+.body-aefiSummary { padding-top: 0; }
+.summary-head { margin-top: 0; border-radius: 0 0 8px 8px; }
+.summary-head .tag { height: 24px; padding: 0 8px; gap: 6px; border-radius: 4px; background: var(--paper); border-color: var(--primary-2); font-size: 14px; line-height: 18px; }
+.summary-head .page-title { margin-top: 8px; }
