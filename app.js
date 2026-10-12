@@ -125,6 +125,7 @@
     setup: { name: "", type: "", locality: "" },
     child: { name: "", dob: "", years: "", months: "", gender: "" },
     aefi: null,
+    fromSummary: false,   // editing a section from Summary: Continue returns straight there
     errors: {}
   };
 
@@ -169,6 +170,7 @@
     menu: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>',
     family: '<svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A2.01 2.01 0 0 0 18.06 7h-.12a2 2 0 0 0-1.9 1.37l-.86 2.58c1.08.6 1.82 1.73 1.82 3.05v8h3zm-7.5-10.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5S11 9.17 11 10s.67 1.5 1.5 1.5zM5.5 6c1.11 0 2-.89 2-2s-.89-2-2-2-2 .89-2 2 .89 2 2 2zm2 16v-7H9V9c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v6h1.5v7h4zm6.5 0v-4h1v-4c0-.82-.68-1.5-1.5-1.5h-2c-.82 0-1.5.68-1.5 1.5v4h1v4h3z"/></svg>',
     outside: '<svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M22.17 9.17c0-3.91-3.19-7.06-7.11-7-3.83.06-6.99 3.37-6.88 7.19.09 3.38 2.58 6.16 5.83 6.7V20H6v-3h1v-4c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v4h1v5h16v-2h-3v-3.88c3.47-.41 6.17-3.36 6.17-6.95zM4.5 11c.83 0 1.5-.67 1.5-1.5S5.33 8 4.5 8 3 8.67 3 9.5 3.67 11 4.5 11z"/></svg>',
+    edit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>',
     aefi: '<svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M15.73 3H8.27L3 8.27v7.46L8.27 21h7.46L21 15.73V8.27L15.73 3zM12 17.3c-.72 0-1.3-.58-1.3-1.3s.58-1.3 1.3-1.3 1.3.58 1.3 1.3-.58 1.3-1.3 1.3zm1-4.3h-2V7h2v6z"/></svg>',
     bus: '<svg class="option-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/></svg>',
     groups: '<svg class="option-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12.75c1.63 0 3.07.39 4.24.9 1.08.48 1.76 1.56 1.76 2.73V18H6v-1.61c0-1.18.68-2.26 1.76-2.73 1.17-.52 2.61-.91 4.24-.91zM4 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm1.13 1.1c-.37-.06-.74-.1-1.13-.1-.99 0-1.93.21-2.78.58C.48 14.9 0 15.62 0 16.43V18h4.5v-1.61c0-.83.23-1.61.63-2.29zM20 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm4 3.43c0-.81-.48-1.53-1.22-1.85-.85-.37-1.79-.58-2.78-.58-.39 0-.76.04-1.13.1.4.68.63 1.46.63 2.29V18H24v-1.57zM12 6c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z"/></svg>',
@@ -358,25 +360,31 @@
     },
 
     aefiSummary() {
-      // Tag and title sit in their own white header card, details in a second card (per the Summary reference).
+      // Two section cards, each with its heading and an Edit link that jumps back to that page.
       const a = state.aefi, c = state.child;
-      return {
-        body: `<div class="card summary-head">
-            ${tag(ASSIGNED_AREA)}
-            ${title("Summary")}
+      state.fromSummary = false;
+      const section = (heading, page, rows) => `<section class="card summary-card" aria-labelledby="sum-${page}">
+          <div class="summary-card-head">
+            <h2 class="summary-heading" id="sum-${page}">${esc(heading)}</h2>
+            <button class="btn-tertiary" data-action="aefi-edit" data-page="${page}" aria-label="Edit ${esc(heading.toLowerCase())}">${ICON.edit}Edit</button>
           </div>
-          <div class="card">
-            ${pairs([
-              ["Child name", c.name.trim()],
-              ["Age", ageText(c)],
-              ["Gender", c.gender],
-              ["Vaccine administered", a.vaccine],
-              ["Date of vaccination", shortDate(a.vaxDate)],
-              ["Date of AEFI onset", shortDate(a.onsetDate)],
-              ["AEFI type", a.type],
-              ["Description", a.desc.trim()]
-            ])}
-          </div>`,
+          ${pairs(rows)}
+        </section>`;
+      return {
+        tag: ASSIGNED_AREA,
+        body: `${title("Summary")}
+          ${section("Child Details", "aefiChild", [
+            ["Child name", c.name.trim()],
+            ["Age", ageText(c)],
+            ["Gender", c.gender]
+          ])}
+          ${section("AEFI Details", "aefiDetails", [
+            ["Vaccine administered", a.vaccine],
+            ["Date of vaccination", shortDate(a.vaxDate)],
+            ["Date of AEFI onset", shortDate(a.onsetDate)],
+            ["AEFI type", a.type],
+            ["Description", a.desc.trim()]
+          ])}`,
         footer: `<button class="btn btn-primary" data-action="aefi-confirm">Submit</button>`
       };
     },
@@ -713,7 +721,7 @@
         "child-age": ageError(c),
         "child-gender": c.gender ? "" : "Select the child’s gender"
       });
-      if (ok) go("aefiDetails");
+      if (ok) state.fromSummary ? back() : go("aefiDetails");
     },
     "aefi-submit"() {
       const a = state.aefi, today = isoDate(new Date());
@@ -727,7 +735,11 @@
         "aefi-type": a.type ? "" : "Select the AEFI type",
         "aefi-desc": a.desc.trim() ? "" : "Enter a description of the event"
       });
-      if (ok) go("aefiSummary");
+      if (ok) state.fromSummary ? back() : go("aefiSummary");
+    },
+    "aefi-edit"(btn) {
+      state.fromSummary = true;
+      go(btn.dataset.page);
     },
     "aefi-confirm"() {
       const a = state.aefi;
