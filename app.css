@@ -316,7 +316,7 @@ body { display: flex; align-items: center; justify-content: center; min-height: 
 .area-btn svg { width: 24px; height: 24px; }
 .home-bar :focus-visible { outline-color: #fff; }
 .body-home { display: flex; flex-direction: column; padding-top: 12px; }
-.progress-card { margin-top: 0; }
+.progress-card { margin-top: 0; border-radius: 12px; }
 .progress-title { font-size: 18px; line-height: 24px; font-weight: 700; color: var(--primary-2); }
 .progress-track { margin-top: 12px; height: 16px; background: var(--border); border-radius: 2px; overflow: hidden; }
 .progress-fill { height: 100%; background: #12AD65; }
