@@ -172,6 +172,13 @@
     outside: '<svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M22.17 9.17c0-3.91-3.19-7.06-7.11-7-3.83.06-6.99 3.37-6.88 7.19.09 3.38 2.58 6.16 5.83 6.7V20H6v-3h1v-4c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v4h1v5h16v-2h-3v-3.88c3.47-.41 6.17-3.36 6.17-6.95zM4.5 11c.83 0 1.5-.67 1.5-1.5S5.33 8 4.5 8 3 8.67 3 9.5 3.67 11 4.5 11z"/></svg>',
     edit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>',
     aefi: '<svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M15.73 3H8.27L3 8.27v7.46L8.27 21h7.46L21 15.73V8.27L15.73 3zM12 17.3c-.72 0-1.3-.58-1.3-1.3s.58-1.3 1.3-1.3 1.3.58 1.3 1.3-.58 1.3-1.3 1.3zm1-4.3h-2V7h2v6z"/></svg>',
+    closedHouse: '<svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M12 3 2 12h3v8h14v-8h3L12 3zm-2.5 10.5v-1a2.5 2.5 0 0 1 5 0v1h.5V18H9v-4.5h.5zm1.5 0h2v-1a1 1 0 0 0-2 0v1z"/></svg>',
+    stock: '<svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z"/></svg>',
+    complaint: '<svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 12h-2v-2h2v2zm0-4h-2V6h2v4z"/></svg>',
+    sync: '<svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18 12l4-4-4-4v3H3v2h15v3zM6 12l-4 4 4 4v-3h15v-2H6v-3z"/></svg>',
+    beneficiary: '<svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm4.5 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4.5 16h8v-.75c0-1.35-2.67-2.25-4-2.25s-4 .9-4 2.25V16zm10-6.5V11h5V9.5h-5zm0 3V14h5v-1.5h-5z"/></svg>',
+    share: '<svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></svg>',
+    db: '<svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM2 8v1.5h20V8H2zm6.67 1.5V20H10V9.5H8.67zm5.33 0V20h1.33V9.5H14z"/></svg>',
     bus: '<svg class="option-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/></svg>',
     groups: '<svg class="option-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12.75c1.63 0 3.07.39 4.24.9 1.08.48 1.76 1.56 1.76 2.73V18H6v-1.61c0-1.18.68-2.26 1.76-2.73 1.17-.52 2.61-.91 4.24-.91zM4 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm1.13 1.1c-.37-.06-.74-.1-1.13-.1-.99 0-1.93.21-2.78.58C.48 14.9 0 15.62 0 16.43V18h4.5v-1.61c0-.83.23-1.61.63-2.29zM20 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm4 3.43c0-.81-.48-1.53-1.22-1.85-.85-.37-1.79-.58-2.78-.58-.39 0-.76.04-1.13.1.4.68.63 1.46.63 2.29V18H24v-1.57zM12 6c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z"/></svg>',
     tick: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -312,6 +319,8 @@
     home() {
       const p = store.progress, pct = Math.min(100, Math.round((p.completed / p.target) * 100));
       const tile = (action, icon, label) => `<li><button class="home-tile" data-action="${action}">${ICON[icon]}<span>${esc(label)}</span></button></li>`;
+      // Tiles with no screens yet: tapping shows a toast.
+      const soon = (icon, label) => `<li><button class="home-tile" data-action="not-in-prototype" data-label="${esc(label)}">${ICON[icon]}<span>${esc(label)}</span></button></li>`;
       return {
         body: `<h1 class="sr-only" id="page-title" tabindex="-1">Home</h1>
           <section class="card progress-card" aria-labelledby="progress-title">
@@ -325,6 +334,14 @@
             ${tile("enumeration", "family", "Enumeration and Vaccination")}
             ${tile("outside-household", "outside", "Outside Household Vaccination")}
             ${tile("report-aefi", "aefi", "Report AEFI")}
+            ${soon("closedHouse", "Mark Closed Household")}
+            ${soon("stock", "Manage Stock")}
+            ${soon("complaint", "File Complaint")}
+            ${soon("sync", "Sync Data")}
+            ${soon("beneficiary", "Beneficiary IDs")}
+            ${soon("share", "Share Data")}
+            ${soon("sync", "Update Stock Data")}
+            ${soon("db", "DB")}
           </ul>
           <p class="powered">Powered by <b>DIGIT</b></p>`,
         footer: ""
@@ -709,6 +726,7 @@
 
     "outside-household"() { go("select"); },
     enumeration() { toast("Enumeration and Vaccination isn\u2019t part of this prototype."); },
+    "not-in-prototype"(btn) { toast(`${btn.dataset.label} isn\u2019t part of this prototype.`); },
     "report-aefi"() {
       state.aefi = freshAefi();
       state.child = { name: "", dob: "", years: "", months: "", gender: "" };
