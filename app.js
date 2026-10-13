@@ -322,6 +322,8 @@
             <p class="progress-text"><span>${p.completed} completed</span> / ${p.target}</p>
           </section>
           <ul class="home-tiles">
+            ${tile("enumeration", "family", "Enumeration and Vaccination")}
+            ${tile("outside-household", "outside", "Outside Household Vaccination")}
             ${tile("report-aefi", "aefi", "Report AEFI")}
           </ul>
           <p class="powered">Powered by <b>DIGIT</b></p>`,
