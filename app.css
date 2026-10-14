@@ -334,7 +334,7 @@ body { display: flex; align-items: center; justify-content: center; min-height: 
 .home-tile:active { border-color: var(--primary-1); }
 .home-tile .tile-icon { width: 32px; height: 32px; flex: 0 0 32px; color: var(--primary-1); }
 /* label fills the space under the icon and sits vertically centred in it */
-.home-tile span { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; overflow-wrap: anywhere; hyphens: auto; text-wrap: balance; }
+.home-tile span { flex: 1 1 auto; display: block; align-content: center; text-align: center; overflow-wrap: anywhere; hyphens: auto; text-wrap: balance; }
 .powered { margin-top: auto; padding-top: 24px; text-align: center; font-size: 12px; line-height: 16px; color: var(--text-2); }
 .powered b { color: var(--text); letter-spacing: .04em; }
 

@@ -319,9 +319,11 @@
   const VIEWS = {
     home() {
       const p = store.progress, pct = Math.min(100, Math.round((p.completed / p.target) * 100));
-      const tile = (action, icon, label) => `<li><button class="home-tile" data-action="${action}">${ICON[icon]}<span>${esc(label)}</span></button></li>`;
+      // "|" in a label marks the line break; it's stripped for the accessible name/toast.
+      const lines = (label) => label.split("|").map(esc).join("<br>");
+      const tile = (action, icon, label) => `<li><button class="home-tile" data-action="${action}" aria-label="${esc(label.replace("|", " "))}">${ICON[icon]}<span>${lines(label)}</span></button></li>`;
       // Tiles with no screens yet: tapping shows a toast.
-      const soon = (icon, label) => `<li><button class="home-tile" data-action="not-in-prototype" data-label="${esc(label)}">${ICON[icon]}<span>${esc(label)}</span></button></li>`;
+      const soon = (icon, label) => `<li><button class="home-tile" data-action="not-in-prototype" data-label="${esc(label.replace("|", " "))}">${ICON[icon]}<span>${lines(label)}</span></button></li>`;
       return {
         body: `<h1 class="sr-only" id="page-title" tabindex="-1">Home</h1>
           <section class="card progress-card" aria-labelledby="progress-title">
@@ -332,13 +334,13 @@
             <p class="progress-text"><span>${p.completed} completed</span> / ${p.target}</p>
           </section>
           <ul class="home-tiles">
-            ${tile("report-aefi", "aefi", "Report AEFI")}
-            ${soon("stock", "Manage Stock")}
-            ${soon("book", "Stock Reconciliation")}
-            ${soon("complaint", "File Complaint")}
-            ${soon("sync", "Sync Data")}
-            ${soon("complaint", "View Reports")}
-            ${soon("sync", "Update Stock Data")}
+            ${tile("report-aefi", "aefi", "Report|AEFI")}
+            ${soon("stock", "Manage|Stock")}
+            ${soon("book", "Stock|Reconciliation")}
+            ${soon("complaint", "File|Complaint")}
+            ${soon("sync", "Sync|Data")}
+            ${soon("complaint", "View|Reports")}
+            ${soon("sync", "Update Stock|Data")}
             ${soon("db", "DB")}
           </ul>
           <p class="powered">Powered by <b>DIGIT</b></p>`,
