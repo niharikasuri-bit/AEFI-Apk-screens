@@ -334,9 +334,9 @@
             <p class="progress-text"><span>${p.completed} completed</span> / ${p.target}</p>
           </section>
           <ul class="home-tiles">
-            ${tile("report-aefi", "aefi", "Report|AEFI")}
             ${soon("stock", "Manage|Stock")}
             ${soon("book", "Stock|Reconciliation")}
+            ${tile("report-aefi", "aefi", "Report|AEFI")}
             ${soon("complaint", "File|Complaint")}
             ${soon("sync", "Sync|Data")}
             ${soon("complaint", "View|Reports")}
