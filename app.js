@@ -66,7 +66,7 @@
 
   // Vaccines offered for "Vaccine administered" — placeholder list until the real one is supplied.
   const VACCINES = ["OPV (Oral Polio)", "IPV (Inactivated Polio)", "Measles-Rubella", "Pentavalent", "BCG", "Rotavirus"];
-  const AEFI_TYPES = ["Non-serious", "Serious"];
+  const AEFI_TYPES = ["Minor", "Serious"];
   // AEFI Kit and Reporting Form — Yes/No indicators asked after AEFI Details.
   const KIT_QUESTIONS = [
     { id: "kit-form-available", key: "formAvailable", label: "Is an AEFI form available?" },
