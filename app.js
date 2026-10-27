@@ -375,7 +375,7 @@
               <div class="chip"><b>${s.minor}</b>Minor AEFI cases</div>
             </div>
           </div>`,
-        footer: `<button class="btn btn-primary" data-action="aefi-start">Report AEFI</button>`
+        footer: `<button class="btn btn-primary" data-action="aefi-start">Report AEFI Case</button>`
       };
     },
 
