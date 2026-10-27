@@ -1,6 +1,6 @@
 /* AEFI – Adverse Event Following Immunization (mobile prototype)
  *
- * Home → Report AEFI → AEFI Cases Overview → Child Details → AEFI Details
+ * Home → Report AEFI → AEFI Cases Overview → Child Details → AEFI Case Details
  *      → AEFI Form and Kit Details → Summary → AEFI Case Reported
  *
  * The polio Outside Household screens below are kept from the polio-app copy.
@@ -67,7 +67,7 @@
   // Vaccines offered for "Vaccine administered" — placeholder list until the real one is supplied.
   const VACCINES = ["OPV (Oral Polio)", "IPV (Inactivated Polio)", "Measles-Rubella", "Pentavalent", "BCG", "Rotavirus"];
   const AEFI_TYPES = ["Serious", "Minor"];
-  // AEFI Form and Kit Details — Yes/No indicators asked after AEFI Details.
+  // AEFI Form and Kit Details — Yes/No indicators asked after AEFI Case Details.
   // A "used" question is asked only when its "available" question is answered Yes.
   const KIT_QUESTIONS = [
     { id: "kit-form-available", key: "formAvailable", label: "Is an AEFI form available?" },
@@ -89,7 +89,7 @@
     success:   { name: "Vaccination Successful", desc: () => "Vaccination has been recorded successfully." },
     aefiOverview: { name: "AEFI Cases Overview", desc: () => "Report adverse events following vaccination and track reported cases." },
     aefiChild:   { name: "Child Details", desc: () => "Add details of the child who had the adverse event." },
-    aefiDetails: { name: "AEFI Details", desc: () => "Add details about the vaccine given and the adverse event that followed." },
+    aefiDetails: { name: "AEFI Case Details", desc: () => "Add details about the vaccine given and the adverse event that followed." },
     aefiKits:    { name: "AEFI Form and Kit Details", desc: () => "Add details about the AEFI form and kit (adrenaline) available and used for this case." },
     aefiSummary: { name: "Summary", desc: () => "Check the details before you submit the report." },
     aefiSuccess: { name: "AEFI Case Reported", desc: () => "The adverse event has been reported successfully." }
@@ -400,7 +400,7 @@
       const a = state.aefi, today = isoDate(new Date());
       return {
         tag: ASSIGNED_AREA,
-        body: `${title("AEFI Details")}
+        body: `${title("AEFI Case Details")}
           <div class="card">
             ${selectField({ id: "aefi-vaccine", label: "Vaccine administered", value: a.vaccine, options: VACCINES, required: true })}
             ${dateField({ id: "aefi-vax-date", label: "Date of vaccination", value: a.vaxDate, required: true, max: today })}
@@ -447,7 +447,7 @@
             ["Age", ageText(c)],
             ["Gender", c.gender]
           ])}
-          ${section("AEFI Details", "aefiDetails", [
+          ${section("AEFI Case Details", "aefiDetails", [
             ["Vaccine administered", a.vaccine],
             ["Date of vaccination", shortDate(a.vaxDate)],
             ["Date of AEFI onset", shortDate(a.onsetDate)],
