@@ -351,13 +351,16 @@
             <p class="progress-text"><span>${p.completed} completed</span> / ${p.target}</p>
           </section>
           <ul class="home-tiles">
-            ${soon("stock", "Manage|Stock")}
-            ${soon("book", "Stock|Reconciliation")}
-            ${tile("report-aefi", "aefi", "Report|AEFI")}
-            ${soon("complaint", "File|Complaint")}
-            ${soon("sync", "Sync|Data")}
-            ${soon("complaint", "View|Reports")}
-            ${soon("sync", "Update Stock|Data")}
+            ${tile("enumeration", "family", "Enumeration and Vaccination")}
+            ${tile("outside-household", "outside", "Outside Household Vaccination")}
+            ${tile("report-aefi", "aefi", "Report AEFI")}
+            ${soon("closedHouse", "Mark Closed Household")}
+            ${soon("stock", "Manage Stock")}
+            ${soon("complaint", "File Complaint")}
+            ${soon("sync", "Sync Data")}
+            ${soon("beneficiary", "Beneficiary IDs")}
+            ${soon("share", "Share Data")}
+            ${soon("sync", "Update Stock Data")}
             ${soon("db", "DB")}
           </ul>
           <p class="powered">Powered by <b>DIGIT</b></p>`,
