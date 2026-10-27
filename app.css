@@ -128,9 +128,9 @@ body { display: flex; align-items: center; justify-content: center; min-height: 
   font-size: 14px; line-height: 20px; color: var(--primary-2);
 }
 .chip b { font-weight: 700; margin-right: 4px; }
-/* one chip per row so long labels (Serious AEFI cases) stay on one line */
-.chips-stack { grid-template-columns: 1fr; }
-.chips-stack .chip { white-space: nowrap; }
+/* side by side, tightened so long labels (Serious AEFI cases) stay on one line */
+.chips-stack { gap: 8px; }
+.chips-stack .chip { white-space: nowrap; padding: 0 6px; font-size: 13px; min-width: 0; }
 
 /* ---------- Buttons ---------- */
 .btn {
