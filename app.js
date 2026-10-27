@@ -366,7 +366,6 @@
       return {
         tag: ASSIGNED_AREA,
         body: `${title("AEFI Cases Overview")}
-          <h2 class="section-title">AEFI Cases</h2>
           <div class="card">
             <p class="metric-value">${s.serious + s.minor}</p>
             <p class="metric-label">Total AEFI cases reported</p>
