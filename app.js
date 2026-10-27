@@ -1,7 +1,7 @@
 /* AEFI – Adverse Event Following Immunization (mobile prototype)
  *
  * Home → Report AEFI → AEFI Cases Overview → Child Details → AEFI Details
- *      → AEFI Checklist → Summary → AEFI Reported
+ *      → AEFI Kit and Reporting Form → Summary → AEFI Reported
  *
  * The polio Outside Household screens below are kept from the polio-app copy.
  *
@@ -67,7 +67,7 @@
   // Vaccines offered for "Vaccine administered" — placeholder list until the real one is supplied.
   const VACCINES = ["OPV (Oral Polio)", "IPV (Inactivated Polio)", "Measles-Rubella", "Pentavalent", "BCG", "Rotavirus"];
   const AEFI_TYPES = ["Non-serious", "Serious"];
-  // AEFI Checklist — Yes/No form and kit indicators asked after AEFI Details.
+  // AEFI Kit and Reporting Form — Yes/No indicators asked after AEFI Details.
   const KIT_QUESTIONS = [
     { id: "kit-form-available", key: "formAvailable", label: "Is an AEFI form available?" },
     { id: "kit-form-used", key: "formUsed", label: "Has an AEFI form been used?" },
@@ -87,7 +87,7 @@
     aefiOverview: { name: "AEFI Cases Overview", desc: () => "Report adverse events following immunization and track reported cases." },
     aefiChild:   { name: "Child Details", desc: () => "Add details of the child who had the adverse event." },
     aefiDetails: { name: "AEFI Details", desc: () => "Record the vaccine given and the adverse event that followed." },
-    aefiKits:    { name: "AEFI Checklist", desc: () => "Confirm whether an AEFI form and an AEFI kit (adrenaline) were available and used for this case." },
+    aefiKits:    { name: "AEFI Kit and Reporting Form", desc: () => "Confirm whether an AEFI kit (adrenaline) and an AEFI reporting form were available and used for this case." },
     aefiSummary: { name: "Summary", desc: () => "Check the details before you submit the report." },
     aefiSuccess: { name: "AEFI Reported", desc: () => "The adverse event has been reported successfully." }
   };
@@ -412,7 +412,7 @@
       const a = state.aefi;
       return {
         tag: ASSIGNED_AREA,
-        body: `${title("AEFI Checklist")}
+        body: `${title("AEFI Kit and Reporting Form")}
           <div class="card">
             ${KIT_QUESTIONS.map(q => radioGroup({ id: q.id, legend: q.label, value: a[q.key], options: ["Yes", "No"], required: true })).join("")}
           </div>`,
@@ -446,7 +446,7 @@
             ["AEFI type", a.type],
             ["Description", a.desc.trim()]
           ])}
-          ${section("AEFI Checklist", "aefiKits", KIT_QUESTIONS.map(q => [q.label, a[q.key]]))}`,
+          ${section("AEFI Kit and Reporting Form", "aefiKits", KIT_QUESTIONS.map(q => [q.label, a[q.key]]))}`,
         footer: `<button class="btn btn-primary" data-action="aefi-confirm">Submit</button>`
       };
     },
