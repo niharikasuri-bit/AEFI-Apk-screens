@@ -87,7 +87,7 @@
     child:     { name: "Child Details", desc: () => "Add details of the child you are vaccinating." },
     checklist: { name: "Vaccination Checklist", desc: () => "Confirm the vaccination by completing the required checklist." },
     success:   { name: "Vaccination Successful", desc: () => "Vaccination has been recorded successfully." },
-    aefiOverview: { name: "AEFI Cases Overview", desc: () => "Report adverse events following immunization and track reported cases." },
+    aefiOverview: { name: "AEFI Cases Overview", desc: () => "Report adverse events following vaccination and track reported cases." },
     aefiChild:   { name: "Child Details", desc: () => "Add details of the child who had the adverse event." },
     aefiDetails: { name: "AEFI Details", desc: () => "Record the vaccine given and the adverse event that followed." },
     aefiKits:    { name: "AEFI Kit and Reporting Form", desc: () => "Confirm whether an AEFI kit (adrenaline) and an AEFI reporting form were available and used for this case." },
