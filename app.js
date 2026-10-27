@@ -222,13 +222,13 @@
   const pairs = rows => `<dl class="pairs">${rows.map(([l, v]) => `<div class="pair"><dt>${esc(l)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>`;
   const errorText = (id, msg) => `<p class="field-error" id="${id}-err" ${msg ? "" : "hidden"}>${ICON.error}<span>${esc(msg || "")}</span></p>`;
 
-  function textField({ id, label, value, required, type = "text", help, inputmode, autocomplete = "off" }) {
+  function textField({ id, label, value, required, type = "text", help, inputmode, autocomplete = "off", autocapitalize }) {
     const err = state.errors[id];
     const describedBy = [help ? `${id}-help` : "", `${id}-err`].filter(Boolean).join(" ");
     return `<div class="field">
       <label class="field-label" for="${id}">${esc(label)}${required ? '<span class="req" aria-hidden="true">*</span>' : ""}</label>
       <input class="input ${err ? "invalid" : ""}" id="${id}" name="${id}" type="${type}" value="${esc(value)}" autocomplete="${autocomplete}"
-        ${inputmode ? `inputmode="${inputmode}"` : ""} ${required ? 'aria-required="true"' : ""} aria-invalid="${!!err}" aria-describedby="${describedBy}" />
+        ${inputmode ? `inputmode="${inputmode}"` : ""} ${autocapitalize ? `autocapitalize="${autocapitalize}"` : ""} ${required ? 'aria-required="true"' : ""} aria-invalid="${!!err}" aria-describedby="${describedBy}" />
       ${help ? `<p class="field-help" id="${id}-help">${esc(help)}</p>` : ""}
       ${errorText(id, err)}
     </div>`;
@@ -388,7 +388,7 @@
         tag: ASSIGNED_AREA,
         body: `${title("Child Details")}
           <div class="card">
-            ${textField({ id: "child-name", label: "Child name", value: c.name, required: true })}
+            ${textField({ id: "child-name", label: "Child name", value: c.name, required: true, autocapitalize: "words" })}
             ${dobAgeField(c)}
             ${radioGroup({ id: "child-gender", legend: "Gender", value: c.gender, options: ["Male", "Female"], toggle: true, contained: true, required: true })}
           </div>`,
@@ -946,6 +946,12 @@
       return;
     }
     const key = t.type === "radio" ? t.name : t.id;
+    // Child name: capital first letter on each word, keeping the caret where it was.
+    if (key === "child-name") {
+      const pos = t.selectionStart;
+      t.value = t.value.replace(/(^|\s)(\S)/g, (m, sp, ch) => sp + ch.toUpperCase());
+      t.setSelectionRange(pos, pos);
+    }
     if (FIELD_MAP[key]) { FIELD_MAP[key](t.value); clearError(key); }
 
     // Show the dependent "used" question only after Yes; anything else clears its answer.
