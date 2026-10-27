@@ -354,8 +354,8 @@
             ${tile("enumeration", "family", "Enumeration and Vaccination")}
             ${tile("outside-household", "outside", "Outside Household Vaccination")}
             ${tile("report-aefi", "aefi", "Report AEFI")}
-            ${soon("closedHouse", "Mark Closed Household")}
             ${soon("stock", "Manage Stock")}
+            ${soon("closedHouse", "Mark Closed Household")}
             ${soon("complaint", "File Complaint")}
             ${soon("sync", "Sync Data")}
             ${soon("beneficiary", "Beneficiary IDs")}
