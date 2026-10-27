@@ -150,7 +150,7 @@ body { display: flex; align-items: center; justify-content: center; min-height: 
 .field { margin-top: 16px; }
 .card .field:first-child { margin-top: 0; }
 .field-label { display: block; font-size: 16px; line-height: 20px; font-weight: 400; color: var(--text); margin-bottom: 4px; }
-.field-label .req { color: var(--error); margin-left: 2px; }
+.field-label .req, .radios legend .req { color: var(--error); margin-left: 2px; }
 .input {
   width: 100%; height: 40px;
   padding: 0 12px;
