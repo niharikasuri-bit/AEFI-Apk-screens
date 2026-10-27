@@ -5,11 +5,12 @@
  *
  * The polio Outside Household screens below are kept from the polio-app copy.
  *
- * Flow: Select Vaccination Location → Search (Transit Post | CLF)
+ * Flow: Select Vaccination Location → Search (Transit Post | Outside Household)
  *       → [Setup if not found] → Overview → Child Details
  *       → Vaccination Checklist → Vaccination Successful
  *
- * Transit Post and CLF share every screen; KINDS holds the wording that differs.
+ * Transit Post and Outside Household share every screen; KINDS holds the wording that differs.
+ * Inputs and CTAs shorten "household" to "HH" (cta = the label used on buttons).
  * Recents, created locations and today's counts persist in localStorage so a
  * second visit behaves like a returning user.
  */
@@ -20,6 +21,7 @@
   const KINDS = {
     tp: {
       short: "Transit Post",
+      cta: "Transit Post",
       lower: "transit post",
       described: "transit post",
       nameLabel: "Transit post name",
@@ -29,12 +31,14 @@
       types: ["Bus stand", "Railway station", "Market", "Border crossing", "Toll plaza", "Ferry terminal"]
     },
     clf: {
-      short: "CLF",
-      lower: "CLF",
-      described: "Communal Living Facility (CLF)",
-      nameLabel: "CLF name",
-      areaLabel: "CLF area",
-      typeLabel: "CLF type",
+      short: "Outside Household",
+      cta: "Outside HH",
+      lower: "outside household",
+      field: "outside HH",
+      described: "outside household location",
+      nameLabel: "Outside HH name",
+      areaLabel: "Outside HH area",
+      typeLabel: "Outside HH type",
       optionSub: "Shared sites such as schools, markets and health posts.",
       types: ["Orphanage", "Boarding school", "Religious school", "Hostel", "Displacement camp"]
     }
@@ -83,7 +87,7 @@
     select:    { name: "Select Vaccination Location", desc: () => "Select the location where you plan to vaccinate children outside households." },
     search:    { name: k => `Search ${KINDS[k].short}`, desc: k => `Search for the ${KINDS[k].described} where you are vaccinating children.` },
     setup:     { name: k => `${KINDS[k].short} Setup`, desc: k => `Add details for the ${KINDS[k].described} where vaccination will take place.` },
-    overview:  { name: k => `${KINDS[k].short} Overview`, desc: k => `Vaccinate children at the ${KINDS[k].lower} and track your progress.` },
+    overview:  { name: k => `${KINDS[k].short} Overview`, desc: k => `Vaccinate children at the ${KINDS[k].described} and track your progress.` },
     child:     { name: "Child Details", desc: () => "Add details of the child you are vaccinating." },
     checklist: { name: "Vaccination Checklist", desc: () => "Confirm the vaccination by completing the required checklist." },
     success:   { name: "Vaccination Successful", desc: () => "Vaccination has been recorded successfully." },
@@ -186,7 +190,7 @@
     check: '<svg viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="24" r="22" stroke="currentColor" stroke-width="3"/><path d="m14 24.5 7 7 13-14" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     menu: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>',
     family: '<svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A2.01 2.01 0 0 0 18.06 7h-.12a2 2 0 0 0-1.9 1.37l-.86 2.58c1.08.6 1.82 1.73 1.82 3.05v8h3zm-7.5-10.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5S11 9.17 11 10s.67 1.5 1.5 1.5zM5.5 6c1.11 0 2-.89 2-2s-.89-2-2-2-2 .89-2 2 .89 2 2 2zm2 16v-7H9V9c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v6h1.5v7h4zm6.5 0v-4h1v-4c0-.82-.68-1.5-1.5-1.5h-2c-.82 0-1.5.68-1.5 1.5v4h1v4h3z"/></svg>',
-    outside: '<svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M22.17 9.17c0-3.91-3.19-7.06-7.11-7-3.83.06-6.99 3.37-6.88 7.19.09 3.38 2.58 6.16 5.83 6.7V20H6v-3h1v-4c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v4h1v5h16v-2h-3v-3.88c3.47-.41 6.17-3.36 6.17-6.95zM4.5 11c.83 0 1.5-.67 1.5-1.5S5.33 8 4.5 8 3 8.67 3 9.5 3.67 11 4.5 11z"/></svg>',
+    outside: '<svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>',
     edit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>',
     aefi: '<svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M15.73 3H8.27L3 8.27v7.46L8.27 21h7.46L21 15.73V8.27L15.73 3zM12 17.3c-.72 0-1.3-.58-1.3-1.3s.58-1.3 1.3-1.3 1.3.58 1.3 1.3-.58 1.3-1.3 1.3zm1-4.3h-2V7h2v6z"/></svg>',
     closedHouse: '<svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M12 3 2 12h3v8h14v-8h3L12 3zm-2.5 10.5v-1a2.5 2.5 0 0 1 5 0v1h.5V18H9v-4.5h.5zm1.5 0h2v-1a1 1 0 0 0-2 0v1z"/></svg>',
@@ -198,7 +202,7 @@
     book: '<svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm0 13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z"/><path fill="currentColor" d="M17.5 10.5c.88 0 1.73.09 2.5.26V9.24c-.79-.15-1.64-.24-2.5-.24-1.7 0-3.24.29-4.5.83v1.66c1.13-.64 2.7-.99 4.5-.99zM13 12.49v1.66c1.13-.64 2.7-.99 4.5-.99.88 0 1.73.09 2.5.26V11.9c-.79-.15-1.64-.24-2.5-.24-1.7 0-3.24.3-4.5.83zm4.5 1.84c-1.7 0-3.24.29-4.5.83v1.66c1.13-.64 2.7-.99 4.5-.99.88 0 1.73.09 2.5.26v-1.52c-.79-.16-1.64-.24-2.5-.24z"/></svg>',
     db: '<svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM2 8v1.5h20V8H2zm6.67 1.5V20H10V9.5H8.67zm5.33 0V20h1.33V9.5H14z"/></svg>',
     bus: '<svg class="option-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 16c0 .88.39 1.67 1 2.22V20c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h8v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1c-.83 0-1.5-.67-1.5-1.5S6.67 14 7.5 14s1.5.67 1.5 1.5S8.33 17 7.5 17zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1.5-6H6V6h12v5z"/></svg>',
-    groups: '<svg class="option-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12.75c1.63 0 3.07.39 4.24.9 1.08.48 1.76 1.56 1.76 2.73V18H6v-1.61c0-1.18.68-2.26 1.76-2.73 1.17-.52 2.61-.91 4.24-.91zM4 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm1.13 1.1c-.37-.06-.74-.1-1.13-.1-.99 0-1.93.21-2.78.58C.48 14.9 0 15.62 0 16.43V18h4.5v-1.61c0-.83.23-1.61.63-2.29zM20 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm4 3.43c0-.81-.48-1.53-1.22-1.85-.85-.37-1.79-.58-2.78-.58-.39 0-.76.04-1.13.1.4.68.63 1.46.63 2.29V18H24v-1.57zM12 6c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z"/></svg>',
+    house: '<svg class="option-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>',
     tick: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     notFound: '<svg class="empty-art" viewBox="0 0 160 124" fill="none" aria-hidden="true">'
       + '<ellipse cx="80" cy="114" rx="52" ry="5" fill="#D6D5D4"/>'
@@ -483,7 +487,7 @@
     select() {
       // Whole card is the tap target and goes straight to that location type's search.
       const opt = (kind, label) => `<li><button class="option-card" data-action="pick-kind" data-kind="${kind}">
-          ${ICON[kind === "tp" ? "bus" : "groups"]}
+          ${ICON[kind === "tp" ? "bus" : "house"]}
           <span class="option-main"><span class="option-title">${esc(label)}</span><span class="option-sub">${esc(KINDS[kind].optionSub)}</span></span>
         </button></li>`;
       return {
@@ -491,7 +495,7 @@
         body: `${title("Select Vaccination Location")}
           <ul class="option-list" aria-labelledby="page-title">
             ${opt("tp", "Transit Post")}
-            ${opt("clf", "Communal Living Facility (CLF)")}
+            ${opt("clf", "Outside Household Vaccination")}
           </ul>`,
         footer: ""
       };
@@ -632,7 +636,7 @@
         <div><dt>Type</dt><dd>${esc(l.type)}</dd></div>
         <div><dt>Area</dt><dd>${esc(l.locality)}</dd></div>
       </dl>
-      <button class="btn btn-secondary loc-select" data-action="pick-location" data-id="${esc(l.id)}" aria-describedby="loc-${esc(l.id)}">Select ${esc(k.short)}</button>
+      <button class="btn btn-secondary loc-select" data-action="pick-location" data-id="${esc(l.id)}" aria-describedby="loc-${esc(l.id)}">Select ${esc(k.cta)}</button>
     </article></li>`;
   }
 
@@ -647,7 +651,7 @@
 
   // Create CTA: primary button, disabled until a search returns nothing.
   function createBtnHtml() {
-    return `<button class="btn btn-primary" id="create-btn" data-action="create" ${noMatch() ? "" : "disabled"}>${ICON.add}Create ${esc(K().short)}</button>`;
+    return `<button class="btn btn-primary" id="create-btn" data-action="create" ${noMatch() ? "" : "disabled"}>${ICON.add}Create ${esc(K().cta)}</button>`;
   }
 
   const NEARBY_KM = 5;   // radius for the default "nearby" list
@@ -865,9 +869,9 @@
     "setup-continue"() {
       const s = state.setup, k = K();
       const ok = showErrors({
-        "setup-name": s.name.trim() ? "" : `Enter the ${k.lower} name`,
-        "setup-type": s.type ? "" : `Select the ${k.lower} type`,
-        "setup-locality": s.locality ? "" : `Select the ${k.lower} area`
+        "setup-name": s.name.trim() ? "" : `Enter the ${k.field || k.lower} name`,
+        "setup-type": s.type ? "" : `Select the ${k.field || k.lower} type`,
+        "setup-locality": s.locality ? "" : `Select the ${k.field || k.lower} area`
       });
       if (!ok) return;
       const id = `${state.kind}-new-${Date.now()}`;
