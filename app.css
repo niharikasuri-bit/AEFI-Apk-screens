@@ -128,6 +128,9 @@ body { display: flex; align-items: center; justify-content: center; min-height: 
   font-size: 14px; line-height: 20px; color: var(--primary-2);
 }
 .chip b { font-weight: 700; margin-right: 4px; }
+/* one chip per row so long labels (Serious AEFI cases) stay on one line */
+.chips-stack { grid-template-columns: 1fr; }
+.chips-stack .chip { white-space: nowrap; }
 
 /* ---------- Buttons ---------- */
 .btn {
@@ -169,6 +172,8 @@ body { display: flex; align-items: center; justify-content: center; min-height: 
 /* radio group – full-width options */
 .radios { display: flex; flex-direction: column; gap: 12px; border: 0; }
 .radios.inline { flex-direction: row; gap: 24px; }
+.radios.inline { flex-wrap: wrap; row-gap: 8px; }
+.radios.inline .field-error { flex-basis: 100%; }
 .radios legend { font-size: 16px; line-height: 20px; color: var(--text); margin-bottom: 8px; padding: 0; }
 .radio { display: flex; align-items: center; gap: 12px; font-size: 16px; line-height: 20px; cursor: pointer; }
 .radio input { appearance: none; -webkit-appearance: none; width: 24px; height: 24px; flex: 0 0 24px; border: 1px solid var(--input-border); border-radius: 50%; background: #fff; display: grid; place-items: center; cursor: pointer; }

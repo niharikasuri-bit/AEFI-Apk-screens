@@ -370,7 +370,7 @@
           <div class="card">
             <p class="metric-value">${s.serious + s.minor}</p>
             <p class="metric-label">Total AEFI cases reported</p>
-            <div class="chips">
+            <div class="chips chips-stack">
               <div class="chip"><b>${s.serious}</b>Serious AEFI cases</div>
               <div class="chip"><b>${s.minor}</b>Minor AEFI cases</div>
             </div>
@@ -415,7 +415,7 @@
         tag: ASSIGNED_AREA,
         body: `${title("AEFI Forms and Kits")}
           <div class="card">
-            ${KIT_QUESTIONS.map(q => radioGroup({ id: q.id, legend: q.label, value: a[q.key], options: ["Yes", "No"], toggle: true, contained: true, required: true })).join("")}
+            ${KIT_QUESTIONS.map(q => radioGroup({ id: q.id, legend: q.label, value: a[q.key], options: ["Yes", "No"], inline: true, required: true })).join("")}
           </div>`,
         footer: `<button class="btn btn-primary" data-action="aefi-kits-continue">Continue</button>`
       };
