@@ -166,7 +166,8 @@
     return isoDate(d);
   }
   // Child name, DOB/age and gender live in state.child so the shared Child Details fields work unchanged.
-  const freshAefi = () => ({ vaccine: "", vaxDate: "", onsetDate: "", type: "", desc: "",
+  const freshAefi = () => ({ vaccine: "Measles-Rubella",   // preselected; can be changed
+    vaxDate: "", onsetDate: "", type: "", desc: "",
     formAvailable: "", formUsed: "", kitAvailable: "", kitUsed: "" });
   const MAX_AGE_MONTHS = 59;
   // "2026-10-10" → "10 Oct 2026"
