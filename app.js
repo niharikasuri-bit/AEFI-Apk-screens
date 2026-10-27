@@ -1,6 +1,7 @@
 /* AEFI – Adverse Event Following Immunization (mobile prototype)
  *
- * Home → Report AEFI → Child Details → AEFI Details → Summary → AEFI Reported
+ * Home → Report AEFI → AEFI Cases Overview → Child Details → AEFI Details
+ *      → AEFI Forms and Kits → Summary → AEFI Reported
  *
  * The polio Outside Household screens below are kept from the polio-app copy.
  *
@@ -66,6 +67,13 @@
   // Vaccines offered for "Vaccine administered" — placeholder list until the real one is supplied.
   const VACCINES = ["OPV (Oral Polio)", "IPV (Inactivated Polio)", "Measles-Rubella", "Pentavalent", "BCG", "Rotavirus"];
   const AEFI_TYPES = ["Non-serious", "Serious"];
+  // AEFI Forms and Kits — Yes/No indicators asked after AEFI Details.
+  const KIT_QUESTIONS = [
+    { id: "kit-form-available", key: "formAvailable", label: "Is an AEFI form available?" },
+    { id: "kit-form-used", key: "formUsed", label: "Has an AEFI form been used?" },
+    { id: "kit-kit-available", key: "kitAvailable", label: "Is an AEFI kit (adrenaline) available?" },
+    { id: "kit-kit-used", key: "kitUsed", label: "Has an AEFI kit (adrenaline) been used?" }
+  ];
 
   const SCREENS = {
     home:      { name: "Home", desc: () => "" },
@@ -76,8 +84,10 @@
     child:     { name: "Child Details", desc: () => "Add details of the child you are vaccinating." },
     checklist: { name: "Vaccination Checklist", desc: () => "Confirm the vaccination by completing the required checklist." },
     success:   { name: "Vaccination Successful", desc: () => "Vaccination has been recorded successfully." },
+    aefiOverview: { name: "AEFI Cases Overview", desc: () => "Report adverse events following immunization and track reported cases." },
     aefiChild:   { name: "Child Details", desc: () => "Add details of the child who had the adverse event." },
     aefiDetails: { name: "AEFI Details", desc: () => "Record the vaccine given and the adverse event that followed." },
+    aefiKits:    { name: "AEFI Forms and Kits", desc: () => "Record whether AEFI forms and kits (adrenaline) were available and used." },
     aefiSummary: { name: "Summary", desc: () => "Check the details before you submit the report." },
     aefiSuccess: { name: "AEFI Reported", desc: () => "The adverse event has been reported successfully." }
   };
@@ -89,6 +99,7 @@
     recent: { tp: [], clf: [] },
     created: { tp: [], clf: [] },
     progress: { completed: 15, target: 80 },   // My Progress on Home
+    aefiStats: { serious: 1, minor: 4 },       // AEFI Cases Overview
     stats: {
       "tp-1": { female: 19, male: 18 },
       "tp-2": { female: 12, male: 9 },
@@ -98,6 +109,7 @@
   let store;
   try { store = JSON.parse(localStorage.getItem(STORE_KEY)) || freshStore(); } catch (e) { store = freshStore(); }
   if (!store.progress) store.progress = freshStore().progress;
+  if (!store.aefiStats) store.aefiStats = freshStore().aefiStats;
   const save = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) { /* private mode */ } };
 
   const allLocations = kind => [...store.created[kind], ...SEED[kind]];
@@ -154,7 +166,8 @@
     return isoDate(d);
   }
   // Child name, DOB/age and gender live in state.child so the shared Child Details fields work unchanged.
-  const freshAefi = () => ({ vaccine: "", vaxDate: "", onsetDate: "", type: "", desc: "" });
+  const freshAefi = () => ({ vaccine: "", vaxDate: "", onsetDate: "", type: "", desc: "",
+    formAvailable: "", formUsed: "", kitAvailable: "", kitUsed: "" });
   const MAX_AGE_MONTHS = 59;
   // "2026-10-10" → "10 Oct 2026"
   const shortDate = iso => iso ? new Date(`${iso}T00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";   // polio target group: under 5 years
@@ -348,6 +361,24 @@
       };
     },
 
+    aefiOverview() {
+      const s = store.aefiStats;
+      return {
+        tag: ASSIGNED_AREA,
+        body: `${title("AEFI Cases Overview")}
+          <h2 class="section-title">AEFI Cases</h2>
+          <div class="card">
+            <p class="metric-value">${s.serious + s.minor}</p>
+            <p class="metric-label">Total AEFI cases reported</p>
+            <div class="chips">
+              <div class="chip"><b>${s.serious}</b>Serious AEFI cases</div>
+              <div class="chip"><b>${s.minor}</b>Minor AEFI cases</div>
+            </div>
+          </div>`,
+        footer: `<button class="btn btn-primary" data-action="aefi-start">Report AEFI</button>`
+      };
+    },
+
     aefiChild() {
       const c = state.child;
       return {
@@ -378,6 +409,18 @@
       };
     },
 
+    aefiKits() {
+      const a = state.aefi;
+      return {
+        tag: ASSIGNED_AREA,
+        body: `${title("AEFI Forms and Kits")}
+          <div class="card">
+            ${KIT_QUESTIONS.map(q => radioGroup({ id: q.id, legend: q.label, value: a[q.key], options: ["Yes", "No"], toggle: true, contained: true, required: true })).join("")}
+          </div>`,
+        footer: `<button class="btn btn-primary" data-action="aefi-kits-continue">Continue</button>`
+      };
+    },
+
     aefiSummary() {
       // Two section cards, each with its heading and an Edit link that jumps back to that page.
       const a = state.aefi, c = state.child;
@@ -403,7 +446,8 @@
             ["Date of AEFI onset", shortDate(a.onsetDate)],
             ["AEFI type", a.type],
             ["Description", a.desc.trim()]
-          ])}`,
+          ])}
+          ${section("AEFI Forms and Kits", "aefiKits", KIT_QUESTIONS.map(q => [q.label, a[q.key]]))}`,
         footer: `<button class="btn btn-primary" data-action="aefi-confirm">Submit</button>`
       };
     },
@@ -418,8 +462,8 @@
             </div>
             <p class="success-desc">${esc(SCREENS.aefiSuccess.desc())}</p>
             <div class="panel-actions">
-              <button class="btn btn-primary" data-action="report-aefi">Report Another AEFI</button>
-              <button class="btn btn-secondary" data-action="to-home">Back to Home</button>
+              <button class="btn btn-primary" data-action="aefi-another">Report Another AEFI</button>
+              <button class="btn btn-secondary" data-action="to-aefi-overview">Back to Overview</button>
             </div>
           </div>`,
         footer: ""
@@ -728,10 +772,13 @@
     enumeration() { toast("Enumeration and Vaccination isn\u2019t part of this prototype."); },
     "not-in-prototype"(btn) { toast(`${btn.dataset.label} isn\u2019t part of this prototype.`); },
     "report-aefi"() {
-      state.aefi = freshAefi();
-      state.child = { name: "", dob: "", years: "", months: "", gender: "" };
       state.history = [];
       state.route = "home";
+      go("aefiOverview");
+    },
+    "aefi-start"() {
+      state.aefi = freshAefi();
+      state.child = { name: "", dob: "", years: "", months: "", gender: "" };
       go("aefiChild");
     },
     "aefi-child-continue"() {
@@ -755,6 +802,11 @@
         "aefi-type": a.type ? "" : "Select the AEFI type",
         "aefi-desc": a.desc.trim() ? "" : "Enter a description of the event"
       });
+      if (ok) state.fromSummary ? back() : go("aefiKits");
+    },
+    "aefi-kits-continue"() {
+      const a = state.aefi;
+      const ok = showErrors(Object.fromEntries(KIT_QUESTIONS.map(q => [q.id, a[q.key] ? "" : "Select Yes or No"])));
       if (ok) state.fromSummary ? back() : go("aefiSummary");
     },
     "aefi-edit"(btn) {
@@ -764,10 +816,19 @@
     "aefi-confirm"() {
       const a = state.aefi;
       (store.aefiReports || (store.aefiReports = [])).unshift({ child: { ...state.child }, ...a, reportedAt: new Date().toISOString() });
+      store.aefiStats[a.type === "Serious" ? "serious" : "minor"]++;
       save();
-      state.history = ["home"];
-      state.route = "home";
+      state.history = ["home", "aefiOverview"];   // Back from AEFI Reported returns to the overview
       go("aefiSuccess", { replace: true });
+    },
+    "aefi-another"() {
+      state.history.pop();
+      state.route = "aefiOverview";
+      ACTIONS["aefi-start"]();
+    },
+    "to-aefi-overview"() {
+      state.history.pop();
+      go("aefiOverview", { replace: true });
     },
     "to-home"() {
       state.history = [];
@@ -861,6 +922,7 @@
     "aefi-onset-date": v => (state.aefi.onsetDate = v),
     "aefi-type": v => (state.aefi.type = v),
     "aefi-desc": v => (state.aefi.desc = v),
+    ...Object.fromEntries(KIT_QUESTIONS.map(q => [q.id, v => (state.aefi[q.key] = v)])),
   };
 
   function clearError(id) {
