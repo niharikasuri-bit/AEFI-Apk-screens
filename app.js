@@ -68,12 +68,15 @@
   const VACCINES = ["OPV (Oral Polio)", "IPV (Inactivated Polio)", "Measles-Rubella", "Pentavalent", "BCG", "Rotavirus"];
   const AEFI_TYPES = ["Minor", "Serious"];
   // AEFI Kit and Reporting Form — Yes/No indicators asked after AEFI Details.
+  // A "used" question is asked only when its "available" question is answered Yes.
   const KIT_QUESTIONS = [
     { id: "kit-form-available", key: "formAvailable", label: "Is an AEFI form available?" },
-    { id: "kit-form-used", key: "formUsed", label: "Has an AEFI form been used?" },
+    { id: "kit-form-used", key: "formUsed", label: "Has an AEFI form been used?", dependsOn: "formAvailable" },
     { id: "kit-kit-available", key: "kitAvailable", label: "Is an AEFI kit (adrenaline) available?" },
-    { id: "kit-kit-used", key: "kitUsed", label: "Has an AEFI kit (adrenaline) been used?" }
+    { id: "kit-kit-used", key: "kitUsed", label: "Has an AEFI kit (adrenaline) been used?", dependsOn: "kitAvailable" }
   ];
+  const kitAsked = (q, a) => !q.dependsOn || a[q.dependsOn] === "Yes";
+  const kitChild = q => KIT_QUESTIONS.find(c => c.dependsOn === q.key);
 
   const SCREENS = {
     home:      { name: "Home", desc: () => "" },
@@ -415,7 +418,11 @@
         tag: ASSIGNED_AREA,
         body: `${title("AEFI Kit and Reporting Form")}
           <div class="card">
-            ${KIT_QUESTIONS.map(q => radioGroup({ id: q.id, legend: q.label, value: a[q.key], options: ["Yes", "No"], required: true })).join("")}
+            ${KIT_QUESTIONS.filter(q => !q.dependsOn).map(q => {
+              const child = kitChild(q), yesNo = c => radioGroup({ id: c.id, legend: c.label, value: a[c.key], options: ["Yes", "No"], required: true });
+              // Dependent question sits in a grey secondary container under its parent.
+              return `${yesNo(q)}<div class="secondary-container dependent" id="${child.id}-wrap" ${a[q.key] === "Yes" ? "" : "hidden"}>${yesNo(child)}</div>`;
+            }).join("")}
           </div>`,
         footer: `<button class="btn btn-primary" data-action="aefi-kits-continue">Continue</button>`
       };
@@ -447,7 +454,7 @@
             ["AEFI type", a.type],
             ["Description", a.desc.trim()]
           ])}
-          ${section("AEFI Kit and Reporting Form", "aefiKits", KIT_QUESTIONS.map(q => [q.label, a[q.key]]))}`,
+          ${section("AEFI Kit and Reporting Form", "aefiKits", KIT_QUESTIONS.filter(q => kitAsked(q, a)).map(q => [q.label, a[q.key]]))}`,
         footer: `<button class="btn btn-primary" data-action="aefi-confirm">Submit</button>`
       };
     },
@@ -806,7 +813,7 @@
     },
     "aefi-kits-continue"() {
       const a = state.aefi;
-      const ok = showErrors(Object.fromEntries(KIT_QUESTIONS.map(q => [q.id, a[q.key] ? "" : "Select Yes or No"])));
+      const ok = showErrors(Object.fromEntries(KIT_QUESTIONS.map(q => [q.id, a[q.key] || !kitAsked(q, a) ? "" : "Select Yes or No"])));
       if (ok) state.fromSummary ? back() : go("aefiSummary");
     },
     "aefi-edit"(btn) {
@@ -940,6 +947,18 @@
     }
     const key = t.type === "radio" ? t.name : t.id;
     if (FIELD_MAP[key]) { FIELD_MAP[key](t.value); clearError(key); }
+
+    // Show the dependent "used" question only after Yes; anything else clears its answer.
+    const parentQ = KIT_QUESTIONS.find(q => q.id === key && kitChild(q));
+    if (parentQ) {
+      const child = kitChild(parentQ), show = t.value === "Yes";
+      document.getElementById(`${child.id}-wrap`).hidden = !show;
+      if (!show) {
+        state.aefi[child.key] = "";
+        document.querySelectorAll(`input[name="${child.id}"]`).forEach(r => (r.checked = false));
+        clearError(child.id);
+      }
+    }
 
     if (key === "aefi-vax-date" || key === "aefi-onset-date") t.classList.toggle("is-empty", !t.value);
     if (key === "aefi-vax-date") document.getElementById("aefi-onset-date").min = t.value;
