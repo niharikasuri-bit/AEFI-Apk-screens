@@ -1,7 +1,7 @@
 /* AEFI – Adverse Event Following Immunization (mobile prototype)
  *
  * Home → Report AEFI → AEFI Cases Overview → Child Details → AEFI Case Details
- *      → AEFI Form and Kit Details → Summary → AEFI Case Reported
+ *      → Summary → AEFI Case Reported
  *
  * The polio Outside Household screens below are kept from the polio-app copy.
  *
@@ -72,16 +72,6 @@
   // Vaccines offered for "Vaccine administered" — placeholder list until the real one is supplied.
   const VACCINES = ["OPV (Oral Polio)", "IPV (Inactivated Polio)", "Measles-Rubella", "Pentavalent", "BCG", "Rotavirus"];
   const AEFI_TYPES = ["Serious", "Minor"];
-  // AEFI Form and Kit Details — Yes/No indicators asked after AEFI Case Details.
-  // A "used" question is asked only when its "available" question is answered Yes.
-  const KIT_QUESTIONS = [
-    { id: "kit-form-available", key: "formAvailable", label: "Is an AEFI form available?" },
-    { id: "kit-form-used", key: "formUsed", label: "Has an AEFI form been used?", dependsOn: "formAvailable" },
-    { id: "kit-kit-available", key: "kitAvailable", label: "Is an AEFI kit (adrenaline) available?" },
-    { id: "kit-kit-used", key: "kitUsed", label: "Has an AEFI kit (adrenaline) been used?", dependsOn: "kitAvailable" }
-  ];
-  const kitAsked = (q, a) => !q.dependsOn || a[q.dependsOn] === "Yes";
-  const kitChild = q => KIT_QUESTIONS.find(c => c.dependsOn === q.key);
 
   const SCREENS = {
     home:      { name: "Home", desc: () => "" },
@@ -95,7 +85,6 @@
     aefiOverview: { name: "AEFI Cases Overview", desc: () => "Report adverse events following vaccination and track the number of reported cases." },
     aefiChild:   { name: "Child Details", desc: () => "Add details of the child who had the adverse event." },
     aefiDetails: { name: "AEFI Case Details", desc: () => "Add details about the vaccine given and the adverse event that followed." },
-    aefiKits:    { name: "AEFI Form and Kit Details", desc: () => "Add details about the AEFI form and kit (adrenaline) available and used for this case." },
     aefiSummary: { name: "Summary", desc: () => "Check the details before you submit the report." },
     aefiSuccess: { name: "AEFI Case Reported", desc: () => "The adverse event has been reported successfully." }
   };
@@ -175,8 +164,7 @@
   }
   // Child name, DOB/age and gender live in state.child so the shared Child Details fields work unchanged.
   const freshAefi = () => ({ vaccine: "Measles-Rubella",   // preselected; can be changed
-    vaxDate: "", onsetDate: "", type: "", desc: "",
-    formAvailable: "", formUsed: "", kitAvailable: "", kitUsed: "" });
+    vaxDate: "", onsetDate: "", type: "", desc: "" });
   const MAX_AGE_MONTHS = 59;
   // "2026-10-10" → "10 Oct 2026"
   const shortDate = iso => iso ? new Date(`${iso}T00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";   // polio target group: under 5 years
@@ -422,22 +410,6 @@
       };
     },
 
-    aefiKits() {
-      const a = state.aefi;
-      return {
-        tag: ASSIGNED_AREA,
-        body: `${title("AEFI Form and Kit Details")}
-          <div class="card">
-            ${KIT_QUESTIONS.filter(q => !q.dependsOn).map(q => {
-              const child = kitChild(q), yesNo = c => radioGroup({ id: c.id, legend: c.label, value: a[c.key], options: ["Yes", "No"], required: true });
-              // Dependent question sits in a grey secondary container under its parent.
-              return `${yesNo(q)}<div class="secondary-container dependent" id="${child.id}-wrap" ${a[q.key] === "Yes" ? "" : "hidden"}>${yesNo(child)}</div>`;
-            }).join('<hr class="q-divider" />')}
-          </div>`,
-        footer: `<button class="btn btn-primary" data-action="aefi-kits-continue">Continue</button>`
-      };
-    },
-
     aefiSummary() {
       // Two section cards, each with its heading and an Edit link that jumps back to that page.
       const a = state.aefi, c = state.child;
@@ -463,8 +435,7 @@
             ["Date of AEFI onset", shortDate(a.onsetDate)],
             ["AEFI type", a.type],
             ["Description", a.desc.trim()]
-          ])}
-          ${section("AEFI Form and Kit Details", "aefiKits", KIT_QUESTIONS.filter(q => kitAsked(q, a)).map(q => [q.label, a[q.key]]))}`,
+          ])}`,
         footer: `<button class="btn btn-primary" data-action="aefi-confirm">Submit</button>`
       };
     },
@@ -819,11 +790,6 @@
         "aefi-type": a.type ? "" : "Select the AEFI type",
         "aefi-desc": a.desc.trim() ? "" : "Enter a description of the event"
       });
-      if (ok) state.fromSummary ? back() : go("aefiKits");
-    },
-    "aefi-kits-continue"() {
-      const a = state.aefi;
-      const ok = showErrors(Object.fromEntries(KIT_QUESTIONS.map(q => [q.id, a[q.key] || !kitAsked(q, a) ? "" : "Select Yes or No"])));
       if (ok) state.fromSummary ? back() : go("aefiSummary");
     },
     "aefi-edit"(btn) {
@@ -939,7 +905,6 @@
     "aefi-onset-date": v => (state.aefi.onsetDate = v),
     "aefi-type": v => (state.aefi.type = v),
     "aefi-desc": v => (state.aefi.desc = v),
-    ...Object.fromEntries(KIT_QUESTIONS.map(q => [q.id, v => (state.aefi[q.key] = v)])),
   };
 
   function clearError(id) {
@@ -963,18 +928,6 @@
       t.setSelectionRange(pos, pos);
     }
     if (FIELD_MAP[key]) { FIELD_MAP[key](t.value); clearError(key); }
-
-    // Show the dependent "used" question only after Yes; anything else clears its answer.
-    const parentQ = KIT_QUESTIONS.find(q => q.id === key && kitChild(q));
-    if (parentQ) {
-      const child = kitChild(parentQ), show = t.value === "Yes";
-      document.getElementById(`${child.id}-wrap`).hidden = !show;
-      if (!show) {
-        state.aefi[child.key] = "";
-        document.querySelectorAll(`input[name="${child.id}"]`).forEach(r => (r.checked = false));
-        clearError(child.id);
-      }
-    }
 
     if (key === "aefi-vax-date" || key === "aefi-onset-date") t.classList.toggle("is-empty", !t.value);
     if (key === "aefi-vax-date") document.getElementById("aefi-onset-date").min = t.value;

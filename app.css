@@ -353,8 +353,3 @@ body { display: flex; align-items: center; justify-content: center; min-height: 
 .btn-tertiary { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 4px; font-size: 16px; line-height: 20px; font-weight: 500; color: var(--primary-1); }
 .btn-tertiary svg { width: 18px; height: 18px; }
 
-/* Dependent question (AEFI Kit and Reporting Form): grey container under its parent */
-.secondary-container.dependent { margin-top: 12px; }
-.secondary-container.dependent > .field { margin-top: 0; }
-/* Divider between the main (non-dependent) questions */
-.q-divider { border: 0; border-top: 1px solid var(--border); margin: 16px 0 0; }
