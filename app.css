@@ -353,3 +353,21 @@ body { display: flex; align-items: center; justify-content: center; min-height: 
 .btn-tertiary { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 4px; font-size: 16px; line-height: 20px; font-weight: 500; color: var(--primary-1); }
 .btn-tertiary svg { width: 18px; height: 18px; }
 
+
+/* ---------- Manage Stock ---------- */
+.stock-list { list-style: none; display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+.stock-card {
+  width: 100%; display: grid; grid-template-columns: 24px 1fr; align-items: center; column-gap: 12px; row-gap: 4px;
+  background: var(--paper); border-radius: 8px; box-shadow: var(--card-shadow);
+  padding: 12px; text-align: left; border: 1px solid transparent;
+}
+.stock-card:hover { border-color: var(--border); }
+.stock-card:active { border-color: var(--primary-1); }
+.stock-card > .stock-icon { width: 24px; height: 24px; color: var(--primary-1); }
+.stock-title { font-size: 18px; line-height: 24px; font-weight: 700; color: var(--primary-2); }
+.stock-sub { grid-column: 1 / -1; font-size: 14px; line-height: 20px; color: var(--text-2); }
+
+/* Record AEFI Forms and Kits: quantity in a grey container under its Yes/No question */
+.secondary-container.dependent { margin-top: 12px; }
+.secondary-container.dependent > .field { margin-top: 0; }
+.q-divider { border: 0; border-top: 1px solid var(--border); margin: 16px 0 0; }

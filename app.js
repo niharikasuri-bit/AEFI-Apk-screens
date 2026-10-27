@@ -2,6 +2,8 @@
  *
  * Home → Report AEFI → AEFI Cases Overview → Child Details → AEFI Case Details
  *      → Summary → AEFI Case Reported
+ * Home → Manage Stock → Record AEFI Forms and Kits → AEFI Forms and Kits Recorded
+ *      (the other stock records are listed but not built)
  *
  * The polio Outside Household screens below are kept from the polio-app copy.
  *
@@ -70,6 +72,16 @@
   };
 
   // Vaccines offered for "Vaccine administered" — placeholder list until the real one is supplied.
+  // Record AEFI Forms and Kits — the four indicators, worded as in the requirement. A Yes opens a quantity.
+  const STOCK_QUESTIONS = [
+    { id: "stk-form-available", key: "formAvailable", label: "Is an AEFI form available?", qty: "Quantity available" },
+    { id: "stk-form-used", key: "formUsed", label: "Has an AEFI form been used?", qty: "Quantity used" },
+    { id: "stk-kit-available", key: "kitAvailable", label: "Is an AEFI kit (adrenaline) available?", qty: "Quantity available" },
+    { id: "stk-kit-used", key: "kitUsed", label: "Has an AEFI kit (adrenaline) been used?", qty: "Quantity used" }
+  ];
+  const freshStock = () => Object.fromEntries(STOCK_QUESTIONS.flatMap(q => [[q.key, ""], [`${q.key}Qty`, ""]]));
+  const isWholeAtLeastOne = v => /^\d+$/.test(v.trim()) && Number(v) > 0;
+
   const VACCINES = ["OPV (Oral Polio)", "IPV (Inactivated Polio)", "Measles-Rubella", "Pentavalent", "BCG", "Rotavirus"];
   const AEFI_TYPES = ["Serious", "Minor"];
 
@@ -86,7 +98,10 @@
     aefiChild:   { name: "Child Details", desc: () => "Add details of the child who had the adverse event." },
     aefiDetails: { name: "AEFI Case Details", desc: () => "Add details about the vaccine given and the adverse event that followed." },
     aefiSummary: { name: "Summary", desc: () => "Check the details before you submit the report." },
-    aefiSuccess: { name: "AEFI Case Reported", desc: () => "The adverse event has been reported successfully." }
+    aefiSuccess: { name: "AEFI Case Reported", desc: () => "The adverse event has been reported successfully." },
+    manageStock: { name: "Manage Stock", desc: () => "" },
+    aefiStock:   { name: "Record AEFI Forms and Kits", desc: () => "Record AEFI forms and kits (adrenaline) available and used." },
+    aefiStockSuccess: { name: "AEFI Forms and Kits Recorded", desc: () => "The AEFI forms and kits have been recorded successfully." }
   };
   const screenName = (route, kind) => { const n = SCREENS[route].name; return typeof n === "function" ? n(kind) : n; };
 
@@ -134,6 +149,7 @@
     setup: { name: "", type: "", locality: "" },
     child: { name: "", dob: "", years: "", months: "", gender: "" },
     aefi: null,
+    stock: null,
     fromSummary: false,   // editing a section from Summary: Continue returns straight there
     errors: {}
   };
@@ -207,6 +223,12 @@
       + '</svg>',
     gps: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="m4.8 8.2 2.2 2.2 4.2-4.6" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     calendar: '<svg class="date-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V9h14v11z"/></svg>',
+    receipt: '<svg class="stock-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>',
+    issue: '<svg class="stock-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>',
+    returned: '<svg class="stock-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>',
+    damaged: '<svg class="stock-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2 4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>',
+    discrepancy: '<svg class="stock-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>',
+    medKit: '<svg class="stock-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20 6h-4V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM10 4h4v2h-4V4zm6 11h-3v3h-2v-3H8v-2h3v-3h2v3h3v2z"/></svg>',
     error: '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M8 4.5v4.2" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="11.3" r="1" fill="#fff"/></svg>'
   };
 
@@ -349,7 +371,7 @@
             ${tile("outside-household", "outside", "Outside Household Vaccination")}
             ${tile("report-aefi", "aefi", "Report AEFI")}
             ${soon("missed", "Missed Children")}
-            ${soon("stock", "Manage Stock")}
+            ${tile("manage-stock", "stock", "Manage Stock")}
             ${soon("closedHouse", "Mark Closed Household")}
             ${soon("complaint", "File Complaint")}
             ${soon("sync", "Sync Data")}
@@ -452,6 +474,63 @@
             <div class="panel-actions">
               <button class="btn btn-primary" data-action="aefi-another">Report Another AEFI Case</button>
               <button class="btn btn-secondary" data-action="to-aefi-overview">Back to Overview</button>
+            </div>
+          </div>`,
+        footer: ""
+      };
+    },
+
+    manageStock() {
+      // Same list of stock records as the inventory app; only Record AEFI Forms and Kits is built here.
+      const card = (action, icon, label, sub) => `<li><button class="stock-card" data-action="${action}" data-label="${esc(label)}">
+          ${ICON[icon]}<span class="stock-title">${esc(label)}</span><span class="stock-sub">${esc(sub)}</span>
+        </button></li>`;
+      return {
+        tag: ASSIGNED_AREA,
+        body: `${title("Manage Stock")}
+          <ul class="stock-list" aria-labelledby="page-title">
+            ${card("not-in-prototype", "receipt", "Record Stock Receipt", "Record stock received at the warehouse and confirm the resources received.")}
+            ${card("not-in-prototype", "issue", "Record Stock Issued", "Create a record stock issued from the warehouse to another facility, warehouse, or user.")}
+            ${card("not-in-prototype", "returned", "Record Stock Returned", "Record stock items returned from field teams or distribution points.")}
+            ${card("not-in-prototype", "damaged", "Record Stock Damaged", "Record stock items that have been damaged during transit or storage.")}
+            ${card("not-in-prototype", "discrepancy", "Report Stock Discrepancy", "Report a discrepancy between expected and received stock quantities.")}
+            ${card("aefi-stock", "medKit", "Record AEFI Forms and Kits", "Record AEFI forms and kits (adrenaline) available and used.")}
+          </ul>`,
+        footer: ""
+      };
+    },
+
+    aefiStock() {
+      const s = state.stock;
+      // Each Yes opens its quantity in a grey container; a divider separates the form pair from the kit pair.
+      const question = q => `${radioGroup({ id: q.id, legend: q.label, value: s[q.key], options: ["Yes", "No"], required: true })}
+        <div class="secondary-container dependent" id="${q.id}-wrap" ${s[q.key] === "Yes" ? "" : "hidden"}>
+          ${textField({ id: `${q.id}-qty`, label: q.qty, value: s[`${q.key}Qty`], required: true, inputmode: "numeric" })}
+        </div>`;
+      return {
+        tag: ASSIGNED_AREA,
+        body: `${title("Record AEFI Forms and Kits")}
+          <div class="card">
+            ${STOCK_QUESTIONS.slice(0, 2).map(question).join("")}
+            <hr class="q-divider" />
+            ${STOCK_QUESTIONS.slice(2).map(question).join("")}
+          </div>`,
+        footer: `<button class="btn btn-primary" data-action="aefi-stock-submit">Submit</button>`
+      };
+    },
+
+    aefiStockSuccess() {
+      return {
+        tag: ASSIGNED_AREA,
+        body: `<div class="card panel-card">
+            <div class="success-panel" role="status">
+              ${ICON.check}
+              <h1 class="success-title" id="page-title" tabindex="-1">AEFI Forms and Kits Recorded</h1>
+            </div>
+            <p class="success-desc">${esc(SCREENS.aefiStockSuccess.desc())}</p>
+            <div class="panel-actions">
+              <button class="btn btn-primary" data-action="aefi-stock">Record Again</button>
+              <button class="btn btn-secondary" data-action="go-home">Go to Home</button>
             </div>
           </div>`,
         footer: ""
@@ -690,7 +769,7 @@
 
   // Page description (from the APK screen list) sits directly under the page title.
   function withDescription(body) {
-    if (["success", "aefiSuccess", "aefiSummary"].includes(state.route)) return body;   // description lives inside the success panel
+    if (["success", "aefiSuccess", "aefiSummary", "manageStock", "aefiStockSuccess"].includes(state.route)) return body;   // description lives inside the success panel
     const desc = `<p class="page-desc" id="page-desc">${esc(SCREENS[state.route].desc(state.kind))}</p>`;
     return body.replace("</h1>", `</h1>${desc}`);
   }
@@ -809,6 +888,33 @@
       state.route = "aefiOverview";
       ACTIONS["aefi-start"]();
     },
+    "manage-stock"() {
+      state.history = [];
+      state.route = "home";
+      go("manageStock");
+    },
+    "aefi-stock"() {
+      state.stock = freshStock();
+      // Record Again replaces the success screen, so Back still returns to Manage Stock.
+      go("aefiStock", { replace: state.route === "aefiStockSuccess" });
+    },
+    "aefi-stock-submit"() {
+      const s = state.stock;
+      const ok = showErrors(Object.fromEntries(STOCK_QUESTIONS.flatMap(q => [
+        [q.id, s[q.key] ? "" : "Select Yes or No"],
+        [`${q.id}-qty`, s[q.key] !== "Yes" ? "" : !s[`${q.key}Qty`].trim() ? "Enter the quantity"
+          : isWholeAtLeastOne(s[`${q.key}Qty`]) ? "" : "Enter a whole number of 1 or more"]
+      ])));
+      if (!ok) return;
+      (store.aefiStock || (store.aefiStock = [])).unshift({ ...s, area: ASSIGNED_AREA, recordedAt: new Date().toISOString() });
+      save();
+      go("aefiStockSuccess", { replace: true });
+    },
+    "go-home"() {
+      state.history = [];
+      state.route = "home";
+      render();
+    },
     "to-aefi-overview"() {
       state.history.pop();
       go("aefiOverview", { replace: true });
@@ -892,6 +998,10 @@
 
   // Form fields write straight into state; re-rendering is avoided so focus is kept.
   const FIELD_MAP = {
+    ...Object.fromEntries(STOCK_QUESTIONS.flatMap(q => [
+      [q.id, v => (state.stock[q.key] = v)],
+      [`${q.id}-qty`, v => (state.stock[`${q.key}Qty`] = v)]
+    ])),
     "setup-name": v => (state.setup.name = v),
     "setup-type": v => (state.setup.type = v),
     "setup-locality": v => (state.setup.locality = v),
@@ -909,7 +1019,9 @@
 
   function clearError(id) {
     if (!state.errors[id]) return;
+    const others = state.errors;
     showErrors({ [id]: "" });
+    state.errors = { ...others, [id]: "" };   // keep the other fields' errors so they can still clear
   }
 
   $phone.addEventListener("input", e => {
@@ -928,6 +1040,18 @@
       t.setSelectionRange(pos, pos);
     }
     if (FIELD_MAP[key]) { FIELD_MAP[key](t.value); clearError(key); }
+
+    // AEFI forms and kits: Yes opens the quantity; No hides and clears it.
+    const stockQ = STOCK_QUESTIONS.find(q => q.id === key);
+    if (stockQ) {
+      const show = t.value === "Yes";
+      document.getElementById(`${key}-wrap`).hidden = !show;
+      if (!show) {
+        state.stock[`${stockQ.key}Qty`] = "";
+        document.getElementById(`${key}-qty`).value = "";
+        clearError(`${key}-qty`);
+      }
+    }
 
     if (key === "aefi-vax-date" || key === "aefi-onset-date") t.classList.toggle("is-empty", !t.value);
     if (key === "aefi-vax-date") document.getElementById("aefi-onset-date").min = t.value;
