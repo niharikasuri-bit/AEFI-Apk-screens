@@ -1,7 +1,7 @@
 /* AEFI – Adverse Event Following Immunization (mobile prototype)
  *
  * Home → Report AEFI → AEFI Cases Overview → Child Details → AEFI Details
- *      → AEFI Kit and Reporting Form → Summary → AEFI Reported
+ *      → AEFI Kit and Reporting Form → Summary → AEFI Case Reported
  *
  * The polio Outside Household screens below are kept from the polio-app copy.
  *
@@ -92,7 +92,7 @@
     aefiDetails: { name: "AEFI Details", desc: () => "Record the vaccine given and the adverse event that followed." },
     aefiKits:    { name: "AEFI Kit and Reporting Form", desc: () => "Confirm whether an AEFI kit (adrenaline) and an AEFI reporting form were available and used for this case." },
     aefiSummary: { name: "Summary", desc: () => "Check the details before you submit the report." },
-    aefiSuccess: { name: "AEFI Reported", desc: () => "The adverse event has been reported successfully." }
+    aefiSuccess: { name: "AEFI Case Reported", desc: () => "The adverse event has been reported successfully." }
   };
   const screenName = (route, kind) => { const n = SCREENS[route].name; return typeof n === "function" ? n(kind) : n; };
 
@@ -465,11 +465,11 @@
         body: `<div class="card panel-card">
             <div class="success-panel" role="status">
               ${ICON.check}
-              <h1 class="success-title" id="page-title" tabindex="-1">AEFI Reported</h1>
+              <h1 class="success-title" id="page-title" tabindex="-1">AEFI Case Reported</h1>
             </div>
             <p class="success-desc">${esc(SCREENS.aefiSuccess.desc())}</p>
             <div class="panel-actions">
-              <button class="btn btn-primary" data-action="aefi-another">Report Another AEFI</button>
+              <button class="btn btn-primary" data-action="aefi-another">Report Another AEFI Case</button>
               <button class="btn btn-secondary" data-action="to-aefi-overview">Back to Overview</button>
             </div>
           </div>`,
@@ -825,7 +825,7 @@
       (store.aefiReports || (store.aefiReports = [])).unshift({ child: { ...state.child }, ...a, reportedAt: new Date().toISOString() });
       store.aefiStats[a.type === "Serious" ? "serious" : "minor"]++;
       save();
-      state.history = ["home", "aefiOverview"];   // Back from AEFI Reported returns to the overview
+      state.history = ["home", "aefiOverview"];   // Back from AEFI Case Reported returns to the overview
       go("aefiSuccess", { replace: true });
     },
     "aefi-another"() {
