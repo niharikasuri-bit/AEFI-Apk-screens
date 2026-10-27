@@ -1,7 +1,7 @@
 /* AEFI – Adverse Event Following Immunization (mobile prototype)
  *
  * Home → Report AEFI → AEFI Cases Overview → Child Details → AEFI Details
- *      → AEFI Kit and Reporting Form → Summary → AEFI Case Reported
+ *      → AEFI Kit and Reporting Form Details → Summary → AEFI Case Reported
  *
  * The polio Outside Household screens below are kept from the polio-app copy.
  *
@@ -67,7 +67,7 @@
   // Vaccines offered for "Vaccine administered" — placeholder list until the real one is supplied.
   const VACCINES = ["OPV (Oral Polio)", "IPV (Inactivated Polio)", "Measles-Rubella", "Pentavalent", "BCG", "Rotavirus"];
   const AEFI_TYPES = ["Serious", "Minor"];
-  // AEFI Kit and Reporting Form — Yes/No indicators asked after AEFI Details.
+  // AEFI Kit and Reporting Form Details — Yes/No indicators asked after AEFI Details.
   // A "used" question is asked only when its "available" question is answered Yes.
   const KIT_QUESTIONS = [
     { id: "kit-form-available", key: "formAvailable", label: "Is an AEFI form available?" },
@@ -90,7 +90,7 @@
     aefiOverview: { name: "AEFI Cases Overview", desc: () => "Report adverse events following vaccination and track reported cases." },
     aefiChild:   { name: "Child Details", desc: () => "Add details of the child who had the adverse event." },
     aefiDetails: { name: "AEFI Details", desc: () => "Record the vaccine given and the adverse event that followed." },
-    aefiKits:    { name: "AEFI Kit and Reporting Form", desc: () => "Confirm whether an AEFI kit (adrenaline) and an AEFI reporting form were available and used for this case." },
+    aefiKits:    { name: "AEFI Kit and Reporting Form Details", desc: () => "Confirm whether an AEFI kit (adrenaline) and an AEFI reporting form were available and used for this case." },
     aefiSummary: { name: "Summary", desc: () => "Check the details before you submit the report." },
     aefiSuccess: { name: "AEFI Case Reported", desc: () => "The adverse event has been reported successfully." }
   };
@@ -416,7 +416,7 @@
       const a = state.aefi;
       return {
         tag: ASSIGNED_AREA,
-        body: `${title("AEFI Kit and Reporting Form")}
+        body: `${title("AEFI Kit and Reporting Form Details")}
           <div class="card">
             ${KIT_QUESTIONS.filter(q => !q.dependsOn).map(q => {
               const child = kitChild(q), yesNo = c => radioGroup({ id: c.id, legend: c.label, value: a[c.key], options: ["Yes", "No"], required: true });
@@ -454,7 +454,7 @@
             ["AEFI type", a.type],
             ["Description", a.desc.trim()]
           ])}
-          ${section("AEFI Kit and Reporting Form", "aefiKits", KIT_QUESTIONS.filter(q => kitAsked(q, a)).map(q => [q.label, a[q.key]]))}`,
+          ${section("AEFI Kit and Reporting Form Details", "aefiKits", KIT_QUESTIONS.filter(q => kitAsked(q, a)).map(q => [q.label, a[q.key]]))}`,
         footer: `<button class="btn btn-primary" data-action="aefi-confirm">Submit</button>`
       };
     },
