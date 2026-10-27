@@ -422,7 +422,7 @@
               const child = kitChild(q), yesNo = c => radioGroup({ id: c.id, legend: c.label, value: a[c.key], options: ["Yes", "No"], required: true });
               // Dependent question sits in a grey secondary container under its parent.
               return `${yesNo(q)}<div class="secondary-container dependent" id="${child.id}-wrap" ${a[q.key] === "Yes" ? "" : "hidden"}>${yesNo(child)}</div>`;
-            }).join("")}
+            }).join('<hr class="q-divider" />')}
           </div>`,
         footer: `<button class="btn btn-primary" data-action="aefi-kits-continue">Continue</button>`
       };

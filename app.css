@@ -356,3 +356,5 @@ body { display: flex; align-items: center; justify-content: center; min-height: 
 /* Dependent question (AEFI Kit and Reporting Form): grey container under its parent */
 .secondary-container.dependent { margin-top: 12px; }
 .secondary-container.dependent > .field { margin-top: 0; }
+/* Divider between the main (non-dependent) questions */
+.q-divider { border: 0; border-top: 1px solid var(--border); margin: 16px 0 0; }
