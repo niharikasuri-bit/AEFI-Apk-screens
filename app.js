@@ -5,11 +5,12 @@
  *
  * The polio Outside Household screens below are kept from the polio-app copy.
  *
- * Flow: Select Vaccination Location → Search (Transit Post | Outside HH Place)
+ * Flow: Select Vaccination Location → Search (Transit Post | Outside Household Place)
  *       → [Setup if not found] → Overview → Child Details
  *       → Vaccination Checklist → Vaccination Successful
  *
- * Transit Post and Outside HH Place share every screen; KINDS holds the wording that differs.
+ * Transit Post and Outside Household Place share every screen; KINDS holds the wording that differs.
+ * Titles use the full name; CTAs (cta) and inputs (field) shorten "household" to "HH".
  * Recents, created locations and today's counts persist in localStorage so a
  * second visit behaves like a returning user.
  */
@@ -20,7 +21,9 @@
   const KINDS = {
     tp: {
       short: "Transit Post",
+      cta: "Transit Post",
       lower: "transit post",
+      field: "transit post",
       described: "transit post",
       nameLabel: "Transit post name",
       areaLabel: "Transit post area",
@@ -29,9 +32,11 @@
       types: ["Bus stand", "Railway station", "Market", "Border crossing", "Toll plaza", "Ferry terminal"]
     },
     clf: {
-      short: "Outside HH Place",
-      lower: "outside HH place",
-      described: "outside HH place",
+      short: "Outside Household Place",
+      cta: "Outside HH Place",
+      lower: "outside household place",
+      field: "outside HH place",
+      described: "outside household place",
       nameLabel: "Outside HH place name",
       areaLabel: "Outside HH place area",
       typeLabel: "Outside HH place type",
@@ -632,7 +637,7 @@
         <div><dt>Type</dt><dd>${esc(l.type)}</dd></div>
         <div><dt>Area</dt><dd>${esc(l.locality)}</dd></div>
       </dl>
-      <button class="btn btn-secondary loc-select" data-action="pick-location" data-id="${esc(l.id)}" aria-describedby="loc-${esc(l.id)}">Select ${esc(k.short)}</button>
+      <button class="btn btn-secondary loc-select" data-action="pick-location" data-id="${esc(l.id)}" aria-describedby="loc-${esc(l.id)}">Select ${esc(k.cta)}</button>
     </article></li>`;
   }
 
@@ -647,7 +652,7 @@
 
   // Create CTA: primary button, disabled until a search returns nothing.
   function createBtnHtml() {
-    return `<button class="btn btn-primary" id="create-btn" data-action="create" ${noMatch() ? "" : "disabled"}>${ICON.add}Create ${esc(K().short)}</button>`;
+    return `<button class="btn btn-primary" id="create-btn" data-action="create" ${noMatch() ? "" : "disabled"}>${ICON.add}Create ${esc(K().cta)}</button>`;
   }
 
   const NEARBY_KM = 5;   // radius for the default "nearby" list
@@ -865,9 +870,9 @@
     "setup-continue"() {
       const s = state.setup, k = K();
       const ok = showErrors({
-        "setup-name": s.name.trim() ? "" : `Enter the ${k.lower} name`,
-        "setup-type": s.type ? "" : `Select the ${k.lower} type`,
-        "setup-locality": s.locality ? "" : `Select the ${k.lower} area`
+        "setup-name": s.name.trim() ? "" : `Enter the ${k.field} name`,
+        "setup-type": s.type ? "" : `Select the ${k.field} type`,
+        "setup-locality": s.locality ? "" : `Select the ${k.field} area`
       });
       if (!ok) return;
       const id = `${state.kind}-new-${Date.now()}`;
