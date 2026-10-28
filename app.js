@@ -1,7 +1,7 @@
 /* AEFI – Adverse Event Following Immunization (mobile prototype)
  *
  * Home → Report AEFI → AEFI Cases Overview → Child Details → AEFI Case Details
- *      → AEFI Form and Kit Details → Summary → AEFI Case Reported
+ *      → Summary → AEFI Case Reported
  * Home → Manage Stock → Record AEFI Forms and Kits → AEFI Forms and Kits Recorded
  * Home → Manage Stock → Receipt | Issued | Returned | Discrepancy
  *      — the same flows as the inventory app (github.com/niharikasuri-bit/inventory),
@@ -84,19 +84,15 @@
   ];
   const askedStock = (q, s) => !q.dependsOn || s[q.dependsOn] === "Yes";
   const freshStock = () => Object.fromEntries(STOCK_QUESTIONS.flatMap(q => [[q.key, ""], [`${q.key}Qty`, ""]]));
-  // Daily AEFI check: due once per day, filled in from current stock (available) and today's AEFI reports (used).
+  // Daily AEFI check: due once per day; "available" is filled in from current stock.
   const isToday = iso => iso && isoDate(new Date(iso)) === isoDate(new Date());
   const todaysCheck = () => (store.aefiStock || []).find(r => isToday(r.recordedAt));
   function prefilledStock() {
-    const s = freshStock(), today = (store.aefiReports || []).filter(r => isToday(r.reportedAt));
+    const s = freshStock();
     [["form", "AEFI forms"], ["kit", "AEFI kits (adrenaline)"]].forEach(([k, name]) => {
-      const have = store.stockLevels[name], used = today.filter(r => r[`${k}Used`] === "Yes").length;
+      const have = store.stockLevels[name];
       s[`${k}Available`] = have > 0 ? "Yes" : "No";
-      if (have > 0) {
-        s[`${k}AvailableQty`] = String(have);
-        s[`${k}Used`] = used ? "Yes" : "No";
-        if (used) s[`${k}UsedQty`] = String(used);
-      }
+      if (have > 0) s[`${k}AvailableQty`] = String(have);
     });
     return s;
   }
@@ -185,7 +181,6 @@
     aefiOverview: { name: "AEFI Cases Overview", desc: () => "Report adverse events following vaccination and track the number of reported cases." },
     aefiChild:   { name: "Child Details", desc: () => "Add details of the child who had the adverse event." },
     aefiDetails: { name: "AEFI Case Details", desc: () => "Add details about the vaccine given and the adverse event that followed." },
-    aefiKit:     { name: "AEFI Form and Kit Details", desc: () => "Record whether an AEFI form and an AEFI kit (adrenaline) were used for this case." },
     aefiSummary: { name: "Summary", desc: () => "Check the details before you submit the report." },
     aefiSuccess: { name: "AEFI Case Reported", desc: () => "The adverse event has been reported successfully." },
     manageStock: { name: "Manage Stock", desc: () => "" },
@@ -285,7 +280,7 @@
   }
   // Child name, DOB/age and gender live in state.child so the shared Child Details fields work unchanged.
   const freshAefi = () => ({ vaccine: "Measles-Rubella",   // preselected; can be changed
-    vaxDate: "", onsetDate: "", type: "", desc: "", formUsed: "", kitUsed: "" });
+    vaxDate: "", onsetDate: "", type: "", desc: "" });
   const MAX_AGE_MONTHS = 59;
   // "2026-10-10" → "10 Oct 2026"
   const shortDate = iso => iso ? new Date(`${iso}T00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";   // polio target group: under 5 years
@@ -530,21 +525,6 @@
       </div>`;
   }
 
-  // Home: Record AEFI Forms and Kits as a daily check — icon tile with the status tag top right, title, description,
-  // ("Due for today" in red, or "Done for today" in green with the time) and the Record button.
-  function dailyCheckCard() {
-    const done = todaysCheck();
-    const status = done
-      ? `<p class="dc-status ok" role="status">${ICON.tick}<span>Done for today · Recorded at ${esc(new Date(done.recordedAt).toTimeString().slice(0, 5))}</span></p>`
-      : `<p class="dc-status due">${ICON.alertCircle}<span>Due for today</span></p>`;
-    return `<section class="card daily-check ${done ? "done" : ""}" aria-labelledby="dc-title">
-        <div class="dc-top"><span class="dc-icon">${ICON.medKit}</span>${status}</div>
-        <h2 class="dc-title" id="dc-title">Record AEFI Forms and Kits</h2>
-        <p class="dc-desc">Record AEFI forms and kits (adrenaline) available and used.</p>
-        ${done ? "" : `<button class="btn btn-primary dc-btn" data-action="aefi-stock" aria-describedby="dc-title">Record</button>`}
-      </section>`;
-  }
-
   // Signed difference between the quantity received and expected: red for a shortfall, green for an overage.
   function diffTag(raw, expected, unit) {
     if (raw == null || !/^\d+$/.test(String(raw).trim())) return "";
@@ -606,7 +586,6 @@
             </div>
             <p class="progress-text"><span>${p.completed} completed</span> / ${p.target}</p>
           </section>
-          ${dailyCheckCard()}
           <ul class="home-tiles">
             ${tile("enumeration", "family", "Enumeration and Vaccination")}
             ${tile("outside-household", "outside", "Outside Household Vaccination")}
@@ -673,19 +652,6 @@
       };
     },
 
-    aefiKit() {
-      return {
-        tag: ASSIGNED_AREA,
-        body: `${title("AEFI Form and Kit Details")}
-          <div class="card">
-            ${radioGroup({ id: "aefi-form-used", legend: "Was an AEFI form used for this case?", value: state.aefi.formUsed, options: ["Yes", "No"], required: true })}
-            <hr class="q-divider" />
-            <div>${radioGroup({ id: "aefi-kit-used", legend: "Was an AEFI kit (adrenaline) used for this case?", value: state.aefi.kitUsed, options: ["Yes", "No"], required: true })}</div>
-          </div>`,
-        footer: `<button class="btn btn-primary" data-action="aefi-kit-continue">Continue</button>`
-      };
-    },
-
     aefiSummary() {
       // Two section cards, each with its heading and an Edit link that jumps back to that page.
       const a = state.aefi, c = state.child;
@@ -711,10 +677,6 @@
             ["Date of AEFI onset", shortDate(a.onsetDate)],
             ["AEFI type", a.type],
             ["Description", a.desc.trim()]
-          ])}
-          ${section("AEFI Form and Kit Details", "aefiKit", [
-            ["AEFI form used", a.formUsed],
-            ["AEFI kit used", a.kitUsed]
           ])}`,
         footer: `<button class="btn btn-primary" data-action="aefi-confirm">Submit</button>`
       };
@@ -739,21 +701,16 @@
     },
 
     manageStock() {
-      // Two sections: the stock records (inventory app's list plus AEFI Forms and Kits), then Report Stock Discrepancy.
+      // Issue, Return and Record AEFI Forms and Kits for now; Receipt and Discrepancy stay built but aren't listed.
       const card = (action, icon, label, sub, flow = "") => `<li><button class="stock-card" data-action="${action}" ${flow ? `data-flow="${flow}"` : ""}>
           ${ICON[icon]}<span class="stock-title">${esc(label)}</span><span class="stock-sub">${esc(sub)}</span>
         </button></li>`;
       return {
         tag: ASSIGNED_AREA,
         body: `${title("Manage Stock")}
-          <h2 class="section-title stock-section" id="stock-records">Record Stock</h2>
-          <ul class="stock-list" aria-labelledby="stock-records">
-            ${Object.entries(STOCK_FLOWS).filter(([flow]) => flow !== "discrepancy").map(([flow, f]) => card("sf-open", f.icon, f.card, f.sub, flow)).join("")}
+          <ul class="stock-list" aria-labelledby="page-title">
+            ${["issue", "return"].map(flow => card("sf-open", STOCK_FLOWS[flow].icon, STOCK_FLOWS[flow].card, STOCK_FLOWS[flow].sub, flow)).join("")}
             ${card("aefi-stock", "medKit", "Record AEFI Forms and Kits", "Record AEFI forms and kits (adrenaline) available and used.")}
-          </ul>
-          <h2 class="section-title stock-section" id="stock-discrepancy">Report Discrepancy</h2>
-          <ul class="stock-list" aria-labelledby="stock-discrepancy">
-            ${card("sf-open", STOCK_FLOWS.discrepancy.icon, STOCK_FLOWS.discrepancy.card, STOCK_FLOWS.discrepancy.sub, "discrepancy")}
           </ul>`,
         footer: ""
       };
@@ -782,7 +739,7 @@
       return {
         tag: ASSIGNED_AREA,
         body: `${title("Record AEFI Forms and Kits")}
-          <p class="prefill-note">${ICON.tick}Filled in from current stock and today’s AEFI reports. Check and correct if needed.</p>
+          <p class="prefill-note">${ICON.tick}Available counts are filled in from current stock. Check and correct if needed.</p>
           <div class="card">
             ${question(STOCK_QUESTIONS[0])}
             <hr class="q-divider" />
@@ -1401,13 +1358,6 @@
         "aefi-type": a.type ? "" : "Select the AEFI type",
         "aefi-desc": a.desc.trim() ? "" : "Enter a description of the event"
       });
-      if (ok) state.fromSummary ? back() : go("aefiKit");
-    },
-    "aefi-kit-continue"() {
-      const ok = showErrors({
-        "aefi-form-used": state.aefi.formUsed ? "" : "Select Yes or No",
-        "aefi-kit-used": state.aefi.kitUsed ? "" : "Select Yes or No"
-      });
       if (ok) state.fromSummary ? back() : go("aefiSummary");
     },
     "aefi-edit"(btn) {
@@ -1418,9 +1368,6 @@
       const a = state.aefi;
       (store.aefiReports || (store.aefiReports = [])).unshift({ child: { ...state.child }, ...a, reportedAt: new Date().toISOString() });
       store.aefiStats[a.type === "Serious" ? "serious" : "minor"]++;
-      // A form or kit used for this case comes off stock.
-      if (a.formUsed === "Yes") store.stockLevels["AEFI forms"] = Math.max(0, store.stockLevels["AEFI forms"] - 1);
-      if (a.kitUsed === "Yes") store.stockLevels["AEFI kits (adrenaline)"] = Math.max(0, store.stockLevels["AEFI kits (adrenaline)"] - 1);
       save();
       state.history = ["home", "aefiOverview"];   // Back from AEFI Case Reported returns to the overview
       go("aefiSuccess", { replace: true });
@@ -1699,8 +1646,6 @@
     "aefi-onset-date": v => (state.aefi.onsetDate = v),
     "aefi-type": v => (state.aefi.type = v),
     "aefi-desc": v => (state.aefi.desc = v),
-    "aefi-form-used": v => (state.aefi.formUsed = v),
-    "aefi-kit-used": v => (state.aefi.kitUsed = v),
   };
 
   function clearError(id) {

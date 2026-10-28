@@ -510,18 +510,5 @@ body { display: flex; align-items: center; justify-content: center; min-height: 
 .stock-section + .stock-list { margin-top: 0; }
 .body-manageStock { padding-bottom: 40px; }
 
-/* Home: daily Record AEFI Forms and Kits — compact (icon tile + status tag, title, description, button) */
-.daily-check { margin-top: 12px; padding: 10px 12px 12px; border-radius: 12px; border-left: 3px solid var(--primary-1); }
-.daily-check.done { border-left-color: var(--success); }
-.dc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.dc-icon { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 6px; background: #FBEAE2; color: var(--primary-1); }
-.dc-icon svg { width: 16px; height: 16px; }
-.dc-title { margin-top: 6px; font-size: 16px; line-height: 20px; font-weight: 700; color: var(--primary-2); }
-.dc-desc { margin-top: 2px; font-size: 13px; line-height: 18px; color: var(--text-2); }
-.dc-status { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; border: 1px solid; font-size: 12px; line-height: 14px; font-weight: 700; }
-.dc-status svg { width: 12px; height: 12px; flex: none; }
-.dc-status.due { background: #FFE3E3; border-color: var(--error); color: var(--error); }
-.dc-status.ok { background: #EBFFE4; border-color: var(--success); color: var(--success); }
-.dc-btn { display: flex; margin-top: 8px; width: auto; height: 28px; padding: 0 14px; font-size: 14px; font-weight: 500; }
 .prefill-note { display: flex; align-items: flex-start; gap: 8px; margin-top: 16px; padding: 10px 12px; background: var(--tag-bg); border-radius: 6px; font-size: 14px; line-height: 20px; color: var(--primary-2); }
 .prefill-note svg { width: 18px; height: 18px; flex: none; margin-top: 1px; }
