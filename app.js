@@ -77,10 +77,10 @@
   // Record AEFI Forms and Kits — the four indicators. A Yes opens a quantity.
   // "Used" depends on "available": it is only asked once the item is available.
   const STOCK_QUESTIONS = [
-    { id: "stk-form-available", key: "formAvailable", label: "Is an AEFI form available?", qty: "How many AEFI forms are available?" },
-    { id: "stk-form-used", key: "formUsed", label: "Has an AEFI form been used for reporting AEFI cases?", qty: "How many AEFI forms have been used?", dependsOn: "formAvailable" },
-    { id: "stk-kit-available", key: "kitAvailable", label: "Is an AEFI kit (adrenaline) available?", qty: "How many AEFI kits (adrenaline) are available?" },
-    { id: "stk-kit-used", key: "kitUsed", label: "Has an AEFI kit (adrenaline) been used for managing AEFI cases?", qty: "How many AEFI kits (adrenaline) have been used?", dependsOn: "kitAvailable" }
+    { id: "stk-form-available", key: "formAvailable", label: "Are AEFI forms available?", qty: "How many AEFI forms are available?" },
+    { id: "stk-form-used", key: "formUsed", label: "Have AEFI forms been used for reporting AEFI cases?", qty: "How many AEFI forms have been used?", dependsOn: "formAvailable" },
+    { id: "stk-kit-available", key: "kitAvailable", label: "Are AEFI kits (adrenaline) available?", qty: "How many AEFI kits (adrenaline) are available?" },
+    { id: "stk-kit-used", key: "kitUsed", label: "Have AEFI kits (adrenaline) been used for managing AEFI cases?", qty: "How many AEFI kits (adrenaline) have been used?", dependsOn: "kitAvailable" }
   ];
   const askedStock = (q, s) => !q.dependsOn || s[q.dependsOn] === "Yes";
   const freshStock = () => Object.fromEntries(STOCK_QUESTIONS.flatMap(q => [[q.key, ""], [`${q.key}Qty`, ""]]));
@@ -172,6 +172,7 @@
     aefiSummary: { name: "Summary", desc: () => "Check the details before you submit the report." },
     aefiSuccess: { name: "AEFI Case Reported", desc: () => "The adverse event has been reported successfully." },
     manageStock: { name: "Manage Stock", desc: () => "" },
+    aefiStockOverview: { name: "AEFI Forms and Kits Overview", desc: () => "Track AEFI forms and kits (adrenaline) available and used." },
     aefiStock:   { name: "Record AEFI Forms and Kits", desc: () => "Record AEFI forms and kits (adrenaline) available and used." },
     aefiStockSuccess: { name: "AEFI Forms and Kits Recorded", desc: () => "The AEFI forms and kits have been recorded successfully." },
     stockTxns: { name: () => state.sf.flow === "receipt" ? "Stock Receipt" : "Select Transaction", desc: () => SF().txnDesc || SF().sub },
@@ -703,23 +704,39 @@
     },
 
     manageStock() {
-      // Two sections: the stock records (inventory app's list plus AEFI Forms and Kits), then Report Stock Discrepancy.
+      // Same list of stock records as the inventory app, plus AEFI Forms and Kits.
       const card = (action, icon, label, sub, flow = "") => `<li><button class="stock-card" data-action="${action}" ${flow ? `data-flow="${flow}"` : ""}>
           ${ICON[icon]}<span class="stock-title">${esc(label)}</span><span class="stock-sub">${esc(sub)}</span>
         </button></li>`;
       return {
         tag: ASSIGNED_AREA,
         body: `${title("Manage Stock")}
-          <h2 class="section-title stock-section" id="stock-records">Record Stock</h2>
-          <ul class="stock-list" aria-labelledby="stock-records">
-            ${Object.entries(STOCK_FLOWS).filter(([flow]) => flow !== "discrepancy").map(([flow, f]) => card("sf-open", f.icon, f.card, f.sub, flow)).join("")}
-            ${card("aefi-stock", "medKit", "Record AEFI Forms and Kits", "Record AEFI forms and kits (adrenaline) available and used.")}
-          </ul>
-          <h2 class="section-title stock-section" id="stock-discrepancy">Report Discrepancy</h2>
-          <ul class="stock-list" aria-labelledby="stock-discrepancy">
-            ${card("sf-open", STOCK_FLOWS.discrepancy.icon, STOCK_FLOWS.discrepancy.card, STOCK_FLOWS.discrepancy.sub, "discrepancy")}
+          <ul class="stock-list" aria-labelledby="page-title">
+            ${Object.entries(STOCK_FLOWS).map(([flow, f]) => card("sf-open", f.icon, f.card, f.sub, flow)).join("")}
+            ${card("aefi-stock-overview", "medKit", "AEFI Forms and Kits", "Track and record AEFI forms and kits (adrenaline) available and used.")}
           </ul>`,
         footer: ""
+      };
+    },
+
+    // Dashboard: available and used from the latest record.
+    aefiStockOverview() {
+      const last = (store.aefiStock || [])[0];
+      const qtyOf = key => !last ? "–" : last[key] !== "Yes" ? "0" : last[`${key}Qty`] || "Yes";
+      // Each heading sits above its white card; the card holds Available and Used in secondary containers.
+      const item = (heading, availKey, usedKey) => `<section aria-labelledby="ov-${availKey}">
+          <h2 class="section-title ov-title" id="ov-${availKey}">${esc(heading)}</h2>
+          <div class="card ov-pair">
+            <p class="secondary-container ov-stat"><span>Available</span><b>${esc(qtyOf(availKey))}</b></p>
+            <p class="secondary-container ov-stat"><span>Used</span><b>${esc(qtyOf(usedKey))}</b></p>
+          </div>
+        </section>`;
+      return {
+        tag: ASSIGNED_AREA,
+        body: `${title("AEFI Forms and Kits Overview")}
+          ${item("AEFI Forms", "formAvailable", "formUsed")}
+          ${item("AEFI Kits (adrenaline)", "kitAvailable", "kitUsed")}`,
+        footer: `<button class="btn btn-primary" data-action="aefi-stock">Record AEFI Forms and Kits</button>`
       };
     },
 
@@ -766,7 +783,7 @@
             <p class="success-desc">${esc(SCREENS.aefiStockSuccess.desc())}</p>
             <div class="panel-actions">
               <button class="btn btn-primary" data-action="aefi-stock">Record Again</button>
-              <button class="btn btn-secondary" data-action="go-home">Go to Home</button>
+              <button class="btn btn-secondary" data-action="back">Back to Overview</button>
             </div>
           </div>`,
         footer: ""
@@ -1392,9 +1409,10 @@
       state.route = "home";
       go("manageStock");
     },
+    "aefi-stock-overview"() { go("aefiStockOverview"); },
     "aefi-stock"() {
       state.stock = freshStock();
-      // Record Again replaces the success screen, so Back still returns to Manage Stock.
+      // Record Again replaces the success screen, so Back still returns to the overview.
       go("aefiStock", { replace: state.route === "aefiStockSuccess" });
     },
     "aefi-stock-submit"() {
