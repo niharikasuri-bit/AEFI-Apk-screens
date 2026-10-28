@@ -736,7 +736,7 @@
         body: `${title("AEFI Forms and Kits Overview")}
           ${item("AEFI Forms", "formAvailable", "formUsed")}
           ${item("AEFI Kits (adrenaline)", "kitAvailable", "kitUsed")}`,
-        footer: `<button class="btn btn-primary" data-action="aefi-stock">Record AEFI Forms and Kits</button>`
+        footer: ""   // Record CTA removed for now
       };
     },
 
