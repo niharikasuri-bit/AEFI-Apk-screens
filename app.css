@@ -510,5 +510,3 @@ body { display: flex; align-items: center; justify-content: center; min-height: 
 .stock-section + .stock-list { margin-top: 0; }
 .body-manageStock { padding-bottom: 40px; }
 
-.prefill-note { display: flex; align-items: flex-start; gap: 8px; margin-top: 16px; padding: 10px 12px; background: var(--tag-bg); border-radius: 6px; font-size: 14px; line-height: 20px; color: var(--primary-2); }
-.prefill-note svg { width: 18px; height: 18px; flex: none; margin-top: 1px; }

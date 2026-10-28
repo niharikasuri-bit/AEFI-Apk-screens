@@ -84,18 +84,6 @@
   ];
   const askedStock = (q, s) => !q.dependsOn || s[q.dependsOn] === "Yes";
   const freshStock = () => Object.fromEntries(STOCK_QUESTIONS.flatMap(q => [[q.key, ""], [`${q.key}Qty`, ""]]));
-  // Daily AEFI check: due once per day; "available" is filled in from current stock.
-  const isToday = iso => iso && isoDate(new Date(iso)) === isoDate(new Date());
-  const todaysCheck = () => (store.aefiStock || []).find(r => isToday(r.recordedAt));
-  function prefilledStock() {
-    const s = freshStock();
-    [["form", "AEFI forms"], ["kit", "AEFI kits (adrenaline)"]].forEach(([k, name]) => {
-      const have = store.stockLevels[name];
-      s[`${k}Available`] = have > 0 ? "Yes" : "No";
-      if (have > 0) s[`${k}AvailableQty`] = String(have);
-    });
-    return s;
-  }
   const isWholeAtLeastOne = v => /^\d+$/.test(v.trim()) && Number(v) > 0;
 
   // ---------- Manage Stock ----------
@@ -739,7 +727,6 @@
       return {
         tag: ASSIGNED_AREA,
         body: `${title("Record AEFI Forms and Kits")}
-          <p class="prefill-note">${ICON.tick}Available counts are filled in from current stock. Check and correct if needed.</p>
           <div class="card">
             ${question(STOCK_QUESTIONS[0])}
             <hr class="q-divider" />
@@ -1383,7 +1370,7 @@
       go("manageStock");
     },
     "aefi-stock"() {
-      state.stock = prefilledStock();
+      state.stock = freshStock();
       // Record Again replaces the success screen, so Back still returns to where the check started.
       go("aefiStock", { replace: state.route === "aefiStockSuccess" });
     },
