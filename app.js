@@ -167,6 +167,7 @@
     checklist: { name: "Vaccination Checklist", desc: () => "Confirm the vaccination by completing the required checklist." },
     success:   { name: "Vaccination Successful", desc: () => "Vaccination has been recorded successfully." },
     aefiOverview: { name: "AEFI Cases Overview", desc: () => "Report adverse events following vaccination and track the number of reported cases." },
+    aefiLocation: { name: "Select Location", desc: () => `Select the location where you are ${state.locFor === "stock" ? "recording AEFI forms and kits" : "reporting the AEFI case"}.` },
     aefiChild:   { name: "Child Details", desc: () => "Add details of the child who had the adverse event." },
     aefiDetails: { name: "AEFI Case Details", desc: () => "Add details about the vaccine given and the adverse event that followed." },
     aefiSummary: { name: "Summary", desc: () => "Check the details before you submit the report." },
@@ -267,7 +268,8 @@
     return isoDate(d);
   }
   // Child name, DOB/age and gender live in state.child so the shared Child Details fields work unchanged.
-  const freshAefi = () => ({ vaccine: "Measles-Rubella",   // preselected; can be changed
+  const locRecord = () => (state.locFor === "stock" ? state.stock : state.aefi);   // whose location the screen is filling
+  const freshAefi = () => ({ locType: "", location: "", referredBy: "", vaccine: "Measles-Rubella",   // preselected; can be changed
     vaxDate: "", onsetDate: "", type: "", desc: "" });
   const MAX_AGE_MONTHS = 59;
   // "2026-10-10" → "10 Oct 2026"
@@ -701,6 +703,29 @@
             ${card("aefi-stock", "medKit", "Record AEFI Forms and Kits", "Record AEFI forms and kits (adrenaline) available and used.")}
           </ul>`,
         footer: ""
+      };
+    },
+
+    // Location type first; the next dropdown lists only the existing locations of that type.
+    aefiLocation() {
+      const s = locRecord(), kind = { "Transit Post": "tp", "Outside Household Place": "clf" }[s.locType];
+      return {
+        tag: ASSIGNED_AREA,
+        body: `${title("Select Location")}
+          <div class="card">
+            <div class="field">
+              <label class="field-label" for="aefi-loc-date">Date</label>
+              <div class="date-wrap">
+                <input class="input date-input" id="aefi-loc-date" type="text" readonly aria-readonly="true" style="cursor: default"
+                  value="${esc(new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }))}" />
+                ${ICON.calendar}
+              </div>
+            </div>
+            ${selectField({ id: "aefi-loc-type", label: "Location type", value: s.locType, options: ["Transit Post", "Outside Household Place"], required: true })}
+            ${kind ? selectField({ id: "aefi-loc", label: KINDS[kind].nameLabel, value: s.location, options: allLocations(kind).map(l => l.name), required: true }) : ""}
+            ${state.locFor === "aefi" ? textField({ id: "aefi-referred", label: "Referred by (CDD team code)", value: s.referredBy }) : ""}
+          </div>`,
+        footer: `<button class="btn btn-primary" data-action="aefi-loc-next">Next</button>`
       };
     },
 
@@ -1322,7 +1347,18 @@
     "aefi-start"() {
       state.aefi = freshAefi();
       state.child = { name: "", dob: "", years: "", months: "", gender: "" };
-      go("aefiChild");
+      state.locFor = "aefi";
+      go("aefiLocation");
+    },
+    "aefi-loc-next"() {
+      const a = locRecord();
+      const ok = showErrors({
+        "aefi-loc-type": a.locType ? "" : "Select a location type",
+        "aefi-loc": !a.locType || a.location ? "" : "Select a location"
+      });
+      if (!ok) return;
+      a.date = new Date().toISOString().slice(0, 10);   // captured automatically; the field is read-only
+      go(state.locFor === "stock" ? "aefiStock" : "aefiChild");
     },
     "aefi-child-continue"() {
       const c = state.child;
@@ -1370,9 +1406,10 @@
       go("manageStock");
     },
     "aefi-stock"() {
-      state.stock = freshStock();
+      state.stock = { ...freshStock(), locType: "", location: "" };
+      state.locFor = "stock";
       // Record Again replaces the success screen, so Back still returns to where the check started.
-      go("aefiStock", { replace: state.route === "aefiStockSuccess" });
+      go("aefiLocation", { replace: state.route === "aefiStockSuccess" });
     },
     "aefi-stock-submit"() {
       const s = state.stock;
@@ -1620,6 +1657,8 @@
       [q.id, v => (state.stock[q.key] = v)],
       [`${q.id}-qty`, v => (state.stock[`${q.key}Qty`] = v)]
     ])),
+    "aefi-loc": v => (locRecord().location = v),
+    "aefi-referred": v => (state.aefi.referredBy = v),
     "setup-name": v => (state.setup.name = v),
     "setup-type": v => (state.setup.type = v),
     "setup-locality": v => (state.setup.locality = v),
@@ -1706,6 +1745,12 @@
       t.setSelectionRange(pos, pos);
     }
     if (FIELD_MAP[key]) { FIELD_MAP[key](t.value); clearError(key); }
+    // A new location type swaps the location dropdown to that type's list.
+    if (key === "aefi-loc-type") {
+      Object.assign(locRecord(), { locType: t.value, location: "" });
+      clearError(key);
+      return rerender(`#${key}`);
+    }
 
     // AEFI forms and kits: Yes opens the quantity; No hides and clears it.
     const stockQ = STOCK_QUESTIONS.find(q => q.id === key);
