@@ -174,7 +174,7 @@
     aefiSuccess: { name: "AEFI Case Reported", desc: () => "The adverse event has been reported successfully." },
     manageStock: { name: "Manage Stock", desc: () => "" },
     aefiStock:   { name: "Record AEFI Forms and Kits", desc: () => "Record AEFI forms and kits (adrenaline) available and used." },
-    aefiStockSuccess: { name: "AEFI Forms and Kits Recorded", desc: () => "The AEFI forms and kits have been recorded successfully." },
+    aefiStockSuccess: { name: "AEFI Forms and Kits Recorded", desc: () => `The AEFI forms and kits have been recorded successfully for ${state.stock?.location || "the location"}.` },
     stockTxns: { name: () => state.sf.flow === "receipt" ? "Stock Receipt" : "Select Transaction", desc: () => SF().txnDesc || SF().sub },
     receiptList: { name: "Stock Receipt", desc: () => "Record stock received at the warehouse and confirm the resources received." },
     stockReceipt: { name: () => state.rc.wasPending ? "Receive Stock" : "Stock Receipt",
