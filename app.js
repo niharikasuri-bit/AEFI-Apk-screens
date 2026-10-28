@@ -84,17 +84,34 @@
   ];
   const askedStock = (q, s) => !q.dependsOn || s[q.dependsOn] === "Yes";
   const freshStock = () => Object.fromEntries(STOCK_QUESTIONS.flatMap(q => [[q.key, ""], [`${q.key}Qty`, ""]]));
+  // Daily AEFI check: due once per day, filled in from current stock (available) and today's AEFI reports (used).
+  const isToday = iso => iso && isoDate(new Date(iso)) === isoDate(new Date());
+  const todaysCheck = () => (store.aefiStock || []).find(r => isToday(r.recordedAt));
+  function prefilledStock() {
+    const s = freshStock(), today = (store.aefiReports || []).filter(r => isToday(r.reportedAt));
+    [["form", "AEFI forms"], ["kit", "AEFI kits (adrenaline)"]].forEach(([k, name]) => {
+      const have = store.stockLevels[name], used = today.filter(r => r[`${k}Used`] === "Yes").length;
+      s[`${k}Available`] = have > 0 ? "Yes" : "No";
+      if (have > 0) {
+        s[`${k}AvailableQty`] = String(have);
+        s[`${k}Used`] = used ? "Yes" : "No";
+        if (used) s[`${k}UsedQty`] = String(used);
+      }
+    });
+    return s;
+  }
   const isWholeAtLeastOne = v => /^\d+$/.test(v.trim()) && Number(v) > 0;
 
   // ---------- Manage Stock ----------
   // AEFI forms and kits move through the stock flows like any other resource.
   const STOCK_RESOURCES = [
-    { name: "Polio vaccine (OPV)", unit: "vials", available: 500 },
-    { name: "AEFI forms", unit: "forms", available: 100 },
-    { name: "AEFI kits (adrenaline)", unit: "kits", available: 10 }
+    { name: "Polio vaccine (OPV)", unit: "vials", short: "OPV vials", available: 500 },
+    { name: "AEFI forms", unit: "forms", short: "AEFI forms", available: 100 },
+    { name: "AEFI kits (adrenaline)", unit: "kits", short: "AEFI kits", available: 10 }
   ];
   const resIndex = name => STOCK_RESOURCES.findIndex(r => r.name === name);
   const resUnit = name => STOCK_RESOURCES[resIndex(name)].unit;
+  const stockLevel = name => store.stockLevels[name];
   const CURRENT_FACILITY = "Central Ward Health Facility";
   const FACILITIES = ["District Vaccine Store", "North Ward Health Post", "Riverside Health Post", "Old Town Health Post"];
   const TRANSPORT_TYPES = ["Truck", "Van", "Motorcycle", "Cycle", "Boat", "Other"];
@@ -172,7 +189,6 @@
     aefiSummary: { name: "Summary", desc: () => "Check the details before you submit the report." },
     aefiSuccess: { name: "AEFI Case Reported", desc: () => "The adverse event has been reported successfully." },
     manageStock: { name: "Manage Stock", desc: () => "" },
-    aefiStockOverview: { name: "AEFI Forms and Kits Overview", desc: () => "Track AEFI forms and kits (adrenaline) available and used." },
     aefiStock:   { name: "Record AEFI Forms and Kits", desc: () => "Record AEFI forms and kits (adrenaline) available and used." },
     aefiStockSuccess: { name: "AEFI Forms and Kits Recorded", desc: () => "The AEFI forms and kits have been recorded successfully." },
     stockTxns: { name: () => state.sf.flow === "receipt" ? "Stock Receipt" : "Select Transaction", desc: () => SF().txnDesc || SF().sub },
@@ -207,6 +223,8 @@
   try { store = JSON.parse(localStorage.getItem(STORE_KEY)) || freshStore(); } catch (e) { store = freshStore(); }
   if (!store.progress) store.progress = freshStore().progress;
   if (!store.aefiStats) store.aefiStats = freshStore().aefiStats;
+  // Current stock per resource (Home card, Issue limit): receipts add, issues and returns deduct.
+  if (!store.stockLevels) store.stockLevels = Object.fromEntries(STOCK_RESOURCES.map(r => [r.name, r.available]));
   const save = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) { /* private mode */ } };
 
   const allLocations = kind => [...store.created[kind], ...SEED[kind]];
@@ -318,6 +336,7 @@
     sort: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></svg>',
     qr: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 3v8h8V3h-8zm6 6h-4V5h4v4zM19 19h2v2h-2zM13 13h2v2h-2zM15 15h2v2h-2zM13 17h2v2h-2zM15 19h2v2h-2zM17 17h2v2h-2zM17 13h2v2h-2zM19 15h2v2h-2z"/></svg>',
     inbox: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 3H4.99c-1.11 0-1.98.89-1.98 2L3 19c0 1.1.88 2 1.99 2H19c1.1 0 2-.9 2-2V5c0-1.11-.9-2-2-2zm0 12h-4c0 1.66-1.35 3-3 3s-3-1.34-3-3H4.99V5H19v10z"/></svg>',
+    alertCircle: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5v5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="16.3" r="1.2" fill="currentColor"/></svg>',
     clock: '<svg class="txn-clock" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>',
     medKit: '<svg class="stock-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20 6h-4V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM10 4h4v2h-4V4zm6 11h-3v3h-2v-3H8v-2h3v-3h2v3h3v2z"/></svg>',
     error: '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M8 4.5v4.2" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="11.3" r="1" fill="#fff"/></svg>'
@@ -511,6 +530,21 @@
       </div>`;
   }
 
+  // Home: Record AEFI Forms and Kits as a daily check — icon tile with the status tag top right, title, description,
+  // ("Due for today" in red, or "Done for today" in green with the time) and the Record button.
+  function dailyCheckCard() {
+    const done = todaysCheck();
+    const status = done
+      ? `<p class="dc-status ok" role="status">${ICON.tick}<span>Done for today · Recorded at ${esc(new Date(done.recordedAt).toTimeString().slice(0, 5))}</span></p>`
+      : `<p class="dc-status due">${ICON.alertCircle}<span>Due for today</span></p>`;
+    return `<section class="card daily-check ${done ? "done" : ""}" aria-labelledby="dc-title">
+        <div class="dc-top"><span class="dc-icon">${ICON.medKit}</span>${status}</div>
+        <h2 class="dc-title" id="dc-title">Record AEFI Forms and Kits</h2>
+        <p class="dc-desc">Record AEFI forms and kits (adrenaline) available and used.</p>
+        ${done ? "" : `<button class="btn btn-primary dc-btn" data-action="aefi-stock" aria-describedby="dc-title">Record</button>`}
+      </section>`;
+  }
+
   // Signed difference between the quantity received and expected: red for a shortfall, green for an overage.
   function diffTag(raw, expected, unit) {
     if (raw == null || !/^\d+$/.test(String(raw).trim())) return "";
@@ -572,6 +606,7 @@
             </div>
             <p class="progress-text"><span>${p.completed} completed</span> / ${p.target}</p>
           </section>
+          ${dailyCheckCard()}
           <ul class="home-tiles">
             ${tile("enumeration", "family", "Enumeration and Vaccination")}
             ${tile("outside-household", "outside", "Outside Household Vaccination")}
@@ -704,39 +739,23 @@
     },
 
     manageStock() {
-      // Same list of stock records as the inventory app, plus AEFI Forms and Kits.
+      // Two sections: the stock records (inventory app's list plus AEFI Forms and Kits), then Report Stock Discrepancy.
       const card = (action, icon, label, sub, flow = "") => `<li><button class="stock-card" data-action="${action}" ${flow ? `data-flow="${flow}"` : ""}>
           ${ICON[icon]}<span class="stock-title">${esc(label)}</span><span class="stock-sub">${esc(sub)}</span>
         </button></li>`;
       return {
         tag: ASSIGNED_AREA,
         body: `${title("Manage Stock")}
-          <ul class="stock-list" aria-labelledby="page-title">
-            ${Object.entries(STOCK_FLOWS).map(([flow, f]) => card("sf-open", f.icon, f.card, f.sub, flow)).join("")}
-            ${card("aefi-stock-overview", "medKit", "AEFI Forms and Kits", "Track and record AEFI forms and kits (adrenaline) available and used.")}
+          <h2 class="section-title stock-section" id="stock-records">Record Stock</h2>
+          <ul class="stock-list" aria-labelledby="stock-records">
+            ${Object.entries(STOCK_FLOWS).filter(([flow]) => flow !== "discrepancy").map(([flow, f]) => card("sf-open", f.icon, f.card, f.sub, flow)).join("")}
+            ${card("aefi-stock", "medKit", "Record AEFI Forms and Kits", "Record AEFI forms and kits (adrenaline) available and used.")}
+          </ul>
+          <h2 class="section-title stock-section" id="stock-discrepancy">Report Discrepancy</h2>
+          <ul class="stock-list" aria-labelledby="stock-discrepancy">
+            ${card("sf-open", STOCK_FLOWS.discrepancy.icon, STOCK_FLOWS.discrepancy.card, STOCK_FLOWS.discrepancy.sub, "discrepancy")}
           </ul>`,
         footer: ""
-      };
-    },
-
-    // Dashboard: available and used from the latest record.
-    aefiStockOverview() {
-      const last = (store.aefiStock || [])[0];
-      const qtyOf = key => !last ? "–" : last[key] !== "Yes" ? "0" : last[`${key}Qty`] || "Yes";
-      // Each heading sits above its white card; the card holds Available and Used in secondary containers.
-      const item = (heading, availKey, usedKey) => `<section aria-labelledby="ov-${availKey}">
-          <h2 class="section-title ov-title" id="ov-${availKey}">${esc(heading)}</h2>
-          <div class="card ov-pair">
-            <p class="secondary-container ov-stat"><span>Available</span><b>${esc(qtyOf(availKey))}</b></p>
-            <p class="secondary-container ov-stat"><span>Used</span><b>${esc(qtyOf(usedKey))}</b></p>
-          </div>
-        </section>`;
-      return {
-        tag: ASSIGNED_AREA,
-        body: `${title("AEFI Forms and Kits Overview")}
-          ${item("AEFI Forms", "formAvailable", "formUsed")}
-          ${item("AEFI Kits (adrenaline)", "kitAvailable", "kitUsed")}`,
-        footer: ""   // Record CTA removed for now
       };
     },
 
@@ -763,6 +782,7 @@
       return {
         tag: ASSIGNED_AREA,
         body: `${title("Record AEFI Forms and Kits")}
+          <p class="prefill-note">${ICON.tick}Filled in from current stock and today’s AEFI reports. Check and correct if needed.</p>
           <div class="card">
             ${question(STOCK_QUESTIONS[0])}
             <hr class="q-divider" />
@@ -783,7 +803,7 @@
             <p class="success-desc">${esc(SCREENS.aefiStockSuccess.desc())}</p>
             <div class="panel-actions">
               <button class="btn btn-primary" data-action="aefi-stock">Record Again</button>
-              <button class="btn btn-secondary" data-action="back">Back to Overview</button>
+              <button class="btn btn-secondary" data-action="go-home">Go to Home</button>
             </div>
           </div>`,
         footer: ""
@@ -926,7 +946,7 @@
               <button class="icon-x" data-action="sf-res-remove" data-i="${i}" aria-label="Remove ${esc(name)}">${ICON.close}</button>
             </div>
             ${textField({ id: `sf-qty-${i}`, label: `${cfg.qtyLabel} (${r.unit})`, value: f.qty[name] || "", required: true, inputmode: "numeric",
-              help: issue ? `Available stock: ${r.available} ${r.unit}` : "" })}
+              help: issue ? `Available stock: ${stockLevel(r.name)} ${r.unit}` : "" })}
           </section>`;
       };
       return {
@@ -1325,6 +1345,9 @@
     back();   // back to Receive Stock
   }
   function finishStock(record) {
+    const flow = state.sf.flow, lv = store.stockLevels;
+    if (flow === "receipt") record.resources.forEach(r => (lv[r.name] += r.received));
+    if (flow === "issue" || flow === "return") record.resources.forEach(r => (lv[r.resource] = Math.max(0, lv[r.resource] - Number(r.quantity))));
     (store.stockRecords || (store.stockRecords = [])).unshift({ type: state.sf.flow, ...record, area: ASSIGNED_AREA, recordedAt: new Date().toISOString() });
     save();
     state.history = ["home", "manageStock"];   // Back from the success screen returns to Manage Stock
@@ -1395,6 +1418,9 @@
       const a = state.aefi;
       (store.aefiReports || (store.aefiReports = [])).unshift({ child: { ...state.child }, ...a, reportedAt: new Date().toISOString() });
       store.aefiStats[a.type === "Serious" ? "serious" : "minor"]++;
+      // A form or kit used for this case comes off stock.
+      if (a.formUsed === "Yes") store.stockLevels["AEFI forms"] = Math.max(0, store.stockLevels["AEFI forms"] - 1);
+      if (a.kitUsed === "Yes") store.stockLevels["AEFI kits (adrenaline)"] = Math.max(0, store.stockLevels["AEFI kits (adrenaline)"] - 1);
       save();
       state.history = ["home", "aefiOverview"];   // Back from AEFI Case Reported returns to the overview
       go("aefiSuccess", { replace: true });
@@ -1409,10 +1435,9 @@
       state.route = "home";
       go("manageStock");
     },
-    "aefi-stock-overview"() { go("aefiStockOverview"); },
     "aefi-stock"() {
-      state.stock = freshStock();
-      // Record Again replaces the success screen, so Back still returns to the overview.
+      state.stock = prefilledStock();
+      // Record Again replaces the success screen, so Back still returns to where the check started.
       go("aefiStock", { replace: state.route === "aefiStockSuccess" });
     },
     "aefi-stock-submit"() {
@@ -1424,6 +1449,11 @@
       ])));
       if (!ok) return;
       (store.aefiStock || (store.aefiStock = [])).unshift({ ...s, area: ASSIGNED_AREA, recordedAt: new Date().toISOString() });
+      // The check is a physical count: what's confirmed here becomes the current stock.
+      [["form", "AEFI forms"], ["kit", "AEFI kits (adrenaline)"]].forEach(([k, name]) => {
+        if (s[`${k}Available`] === "No") store.stockLevels[name] = 0;
+        else if (s[`${k}AvailableQty`].trim()) store.stockLevels[name] = Number(s[`${k}AvailableQty`]);
+      });
       save();
       go("aefiStockSuccess", { replace: true });
     },
@@ -1509,7 +1539,7 @@
         "sf-res": f.picked.length ? "" : "Select at least one resource",
         ...Object.fromEntries(f.picked.map(name => {
           const r = STOCK_RESOURCES[resIndex(name)];
-          return [`sf-qty-${resIndex(name)}`, qtyError(f.qty[name], issue ? r.available : null, `You can issue a maximum of ${r.available} ${r.unit}.`)];
+          return [`sf-qty-${resIndex(name)}`, qtyError(f.qty[name], issue ? stockLevel(name) : null, `You can issue a maximum of ${stockLevel(name)} ${r.unit}.`)];
         })),
         "sf-to": f.to ? "" : `Select who the stock is ${SF().toLabel.toLowerCase()}`,
         "sf-vehicle": f.vehicle ? "" : "Select Yes or No"
