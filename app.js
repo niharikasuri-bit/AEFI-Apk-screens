@@ -724,8 +724,7 @@
             ${selectField({ id: "aefi-loc-type", label: "Location type", value: s.locType, options: ["Transit Post", "Outside Household Place"], required: true })}
             ${kind ? selectField({ id: "aefi-loc", label: KINDS[kind].nameLabel, value: s.location, options: allLocations(kind).map(l => l.name), required: true }) : ""}
             ${state.locFor === "aefi" ? textField({ id: "aefi-referred", label: "Referred by (CDD team code)", value: s.referredBy })
-              : `${textField({ id: "stk-recorded-by", label: "Recorded by (CDD team code)", value: s.recordedBy })}
-                ${textField({ id: "stk-worker", label: "Worker name", value: s.workerName, autocapitalize: "words" })}`}
+              : textField({ id: "stk-recorded-by", label: "Recorded by (CDD team code)", value: s.recordedBy })}
           </div>`,
         footer: `<button class="btn btn-primary" data-action="aefi-loc-next">Next</button>`
       };
@@ -1408,7 +1407,7 @@
       go("manageStock");
     },
     "aefi-stock"() {
-      state.stock = { ...freshStock(), locType: "", location: "", recordedBy: "", workerName: "" };
+      state.stock = { ...freshStock(), locType: "", location: "", recordedBy: "" };
       state.locFor = "stock";
       // Record Again replaces the success screen, so Back still returns to where the check started.
       go("aefiLocation", { replace: state.route === "aefiStockSuccess" });
@@ -1662,7 +1661,6 @@
     "aefi-loc": v => (locRecord().location = v),
     "aefi-referred": v => (state.aefi.referredBy = v),
     "stk-recorded-by": v => (state.stock.recordedBy = v),
-    "stk-worker": v => (state.stock.workerName = v),
     "setup-name": v => (state.setup.name = v),
     "setup-type": v => (state.setup.type = v),
     "setup-locality": v => (state.setup.locality = v),
