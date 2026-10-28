@@ -99,7 +99,11 @@
   const FACILITIES = ["District Vaccine Store", "North Ward Health Post", "Riverside Health Post", "Old Town Health Post"];
   const TRANSPORT_TYPES = ["Truck", "Van", "Motorcycle", "Cycle", "Boat", "Other"];
   // Report Stock Discrepancy asks what caused it (the separate Damaged record was dropped).
-  const DISCREPANCY_REASONS = ["Damage in transit", "Damage in storage"];
+  // "Other" opens a required box to specify the reason.
+  const DISCREPANCY_REASONS = ["Damage in transit", "Damage in storage", "Other"];
+  const otherField = (id, value, show) => `<div class="secondary-container dependent" id="${id}-wrap" ${show ? "" : "hidden"}>
+      ${textField({ id, label: "Specify the reason", value, required: true })}
+    </div>`;
   // Stock sent to this facility — received in Stock Receipt, reported against in Discrepancy.
   const STOCK_TXNS = [
     { id: "TXN-6486482", from: "District Vaccine Store", date: "25 Oct 2026", time: "10:45",
@@ -124,7 +128,7 @@
   const deriveStatus = rs => rs.some(r => r.status === "pending") ? "pending" : rs.some(r => r.status === "discrepancy") ? "discrepancy" : "confirmed";
   const SORT_OPTIONS = [["newest", "Date — Newest First"], ["oldest", "Date — Oldest First"], ["facility", "Facility Name (A–Z)"]];
   const freshRc = () => ({ txns: freshReceipts(), tab: "pending", search: "", sort: "newest", draft: "newest", sortOpen: false,
-    txnId: null, resIdx: null, wasPending: false, scans: 0, scanned: false, mismatch: false, rcv: "", reason: "", comment: "", qr: false });
+    txnId: null, resIdx: null, wasPending: false, scans: 0, scanned: false, mismatch: false, rcv: "", reason: "", other: "", comment: "", qr: false });
   const rcTxn = () => state.rc.txns.find(t => t.id === state.rc.txnId);
   const rcRes = () => rcTxn().resources[state.rc.resIdx];
 
@@ -144,7 +148,7 @@
       pickTitle: "Select Resource", pickLegend: "Select the resource(s) with discrepancy", detail: "stockDiscrepancy",
       success: "Stock Discrepancy Reported", successDesc: "The stock discrepancy has been recorded successfully for review.", again: "Report Another Discrepancy" }
   };
-  const freshSf = flow => ({ flow, txnId: null, picked: [], qty: {}, reason: {}, why: {}, actual: {},
+  const freshSf = flow => ({ flow, txnId: null, picked: [], qty: {}, reason: {}, other: {}, why: {}, actual: {},
     resOpen: false, to: "", vehicle: "", how: "", waybill: "", wbcount: "", transport: "", transportid: "", comments: "" });
   const SF = () => STOCK_FLOWS[state.sf.flow];
   const sfTxn = () => STOCK_TXNS.find(t => t.id === state.sf.txnId);
@@ -499,6 +503,7 @@
     const f = state.sf, over = isOver(f.actual[name], expected);
     return `<div id="sf-reason-${i}-wrap" ${over ? "hidden" : ""}>
         ${selectField({ id: `sf-reason-${i}`, label: "Reason for discrepancy", value: f.reason[name] || "", options: DISCREPANCY_REASONS, required: true })}
+        ${otherField(`sf-other-${i}`, f.other[name] || "", f.reason[name] === "Other")}
       </div>
       <div id="sf-why-${i}-wrap" ${over ? "" : "hidden"}>
         ${textArea({ id: `sf-why-${i}`, label: "Reason for discrepancy", value: f.why[name] || "", required: true, placeholder: "Explain why more was received than expected" })}
@@ -698,16 +703,21 @@
     },
 
     manageStock() {
-      // Same list of stock records as the inventory app, plus Record AEFI Forms and Kits.
+      // Two sections: the stock records (inventory app's list plus AEFI Forms and Kits), then Report Stock Discrepancy.
       const card = (action, icon, label, sub, flow = "") => `<li><button class="stock-card" data-action="${action}" ${flow ? `data-flow="${flow}"` : ""}>
           ${ICON[icon]}<span class="stock-title">${esc(label)}</span><span class="stock-sub">${esc(sub)}</span>
         </button></li>`;
       return {
         tag: ASSIGNED_AREA,
         body: `${title("Manage Stock")}
-          <ul class="stock-list" aria-labelledby="page-title">
-            ${Object.entries(STOCK_FLOWS).map(([flow, f]) => card("sf-open", f.icon, f.card, f.sub, flow)).join("")}
+          <h2 class="section-title stock-section" id="stock-records">Record Stock</h2>
+          <ul class="stock-list" aria-labelledby="stock-records">
+            ${Object.entries(STOCK_FLOWS).filter(([flow]) => flow !== "discrepancy").map(([flow, f]) => card("sf-open", f.icon, f.card, f.sub, flow)).join("")}
             ${card("aefi-stock", "medKit", "Record AEFI Forms and Kits", "Record AEFI forms and kits (adrenaline) available and used.")}
+          </ul>
+          <h2 class="section-title stock-section" id="stock-discrepancy">Report Discrepancy</h2>
+          <ul class="stock-list" aria-labelledby="stock-discrepancy">
+            ${card("sf-open", STOCK_FLOWS.discrepancy.icon, STOCK_FLOWS.discrepancy.card, STOCK_FLOWS.discrepancy.sub, "discrepancy")}
           </ul>`,
         footer: ""
       };
@@ -879,6 +889,7 @@
             <p class="diff-wrap" id="sf-diff">${diffTag(rc.rcv, r.quantity, unit)}</p>
             <div id="sf-reason-wrap">
               ${selectField({ id: "sf-reason", label: "Reason for discrepancy", value: rc.reason, options: DISCREPANCY_REASONS, required: true })}
+              ${otherField("sf-other", rc.other, rc.reason === "Other")}
             </div>
             ${textArea({ id: "sf-comment", label: "Comment", value: rc.comment })}
             <button class="btn btn-secondary scan-btn" data-action="rc-qr" ${rc.qr ? "disabled" : ""}>${ICON.qr}${rc.qr ? "QR Scanned ✓" : "Scan QR Code"}</button>
@@ -1439,7 +1450,7 @@
       go("receiptConfirm");
     },
     "rc-report"(btn) {
-      Object.assign(state.rc, { resIdx: Number(btn.dataset.r), rcv: "", reason: "", comment: "", qr: false });
+      Object.assign(state.rc, { resIdx: Number(btn.dataset.r), rcv: "", reason: "", other: "", comment: "", qr: false });
       go("receiptReport");
     },
     "rc-scan-open"() {
@@ -1462,9 +1473,10 @@
       const rc = state.rc;
       const ok = showErrors({
         "sf-rcv": partialError(rc.rcv, rcRes().quantity),
-        "sf-reason": rc.reason ? "" : "Select the reason for the discrepancy"
+        "sf-reason": rc.reason ? "" : "Select the reason for the discrepancy",
+        "sf-other": rc.reason !== "Other" || rc.other.trim() ? "" : "Enter the reason"
       });
-      if (ok) { Object.assign(rcRes(), { reason: rc.reason, comment: rc.comment.trim() }); applyReceipt("discrepancy", Number(rc.rcv)); }
+      if (ok) { Object.assign(rcRes(), { reason: rc.reason === "Other" ? rc.other.trim() : rc.reason, comment: rc.comment.trim() }); applyReceipt("discrepancy", Number(rc.rcv)); }
     },
     "rc-submit"() {
       const t = rcTxn();
@@ -1520,10 +1532,11 @@
         [`sf-actual-${resIndex(name)}`, discrepancyError(f.actual[name], t.items[name])],
         isOver(f.actual[name], t.items[name])
           ? [`sf-why-${resIndex(name)}`, (f.why[name] || "").trim() ? "" : "Enter the reason for the discrepancy"]
-          : [`sf-reason-${resIndex(name)}`, f.reason[name] ? "" : "Select the reason for the discrepancy"]
+          : [`sf-reason-${resIndex(name)}`, f.reason[name] ? "" : "Select the reason for the discrepancy"],
+        [`sf-other-${resIndex(name)}`, isOver(f.actual[name], t.items[name]) || f.reason[name] !== "Other" || (f.other[name] || "").trim() ? "" : "Enter the reason"]
       ])));
       if (ok) finishStock({ txnId: t.id, discrepancies: f.picked.map(n => ({ resource: n, expected: t.items[n], received: f.actual[n],
-        reason: isOver(f.actual[n], t.items[n]) ? f.why[n].trim() : f.reason[n] })) });
+        reason: isOver(f.actual[n], t.items[n]) ? f.why[n].trim() : f.reason[n] === "Other" ? f.other[n].trim() : f.reason[n] })) });
     },
     "sf-again"() {
       state.sf = freshSf(state.sf.flow);
@@ -1659,8 +1672,9 @@
       return;
     }
     if (key === "sf-sort") { state.rc.draft = t.value; return; }
-    if (key === "sf-rcv" || key === "sf-reason" || key === "sf-comment") {
+    if (key === "sf-rcv" || key === "sf-reason" || key === "sf-other" || key === "sf-comment") {
       state.rc[key.slice(3)] = t.value;
+      if (key === "sf-reason") document.getElementById("sf-other-wrap").hidden = t.value !== "Other";
       if (key === "sf-rcv") document.getElementById("sf-diff").innerHTML = diffTag(t.value, rcRes().quantity, resUnit(rcRes().name));
       clearError(key);
       return;
@@ -1673,10 +1687,11 @@
       if (state.route === "stockForm") rerender(`input[name="sf-res"][value="${CSS.escape(t.value)}"]`);
       return;
     }
-    const m = key.match(/^sf-(qty|reason|why|actual)-(\d+)$/);
+    const m = key.match(/^sf-(qty|reason|other|why|actual)-(\d+)$/);
     if (m) {
       const r = STOCK_RESOURCES[m[2]];
       f[m[1]][r.name] = t.value;
+      if (m[1] === "reason") document.getElementById(`sf-other-${m[2]}-wrap`).hidden = t.value !== "Other";
       if (m[1] === "actual") {
         const t2 = sfTxn(), over = isOver(t.value, t2.items[r.name]);
         document.getElementById(`sf-diff-${m[2]}`).innerHTML = diffTag(t.value, t2.items[r.name], r.unit);

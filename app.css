@@ -505,3 +505,7 @@ body { display: flex; align-items: center; justify-content: center; min-height: 
 /* Record AEFI Forms and Kits: each dependent block in its own secondary container */
 .dep-stack { display: flex; flex-direction: column; gap: 8px; }
 .dep-stack .secondary-container .field:first-child, .secondary-container > .radios.stock-q { margin-top: 0; }
+/* Manage Stock: two sections, small uppercase labels; space below the last card */
+.stock-section { margin: 24px 0 8px; font-size: 12px; line-height: 16px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-2); }
+.stock-section + .stock-list { margin-top: 0; }
+.body-manageStock { padding-bottom: 40px; }
