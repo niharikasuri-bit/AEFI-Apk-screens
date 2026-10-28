@@ -1,9 +1,11 @@
 /* AEFI – Adverse Event Following Immunization (mobile prototype)
  *
  * Home → Report AEFI → AEFI Cases Overview → Child Details → AEFI Case Details
- *      → Summary → AEFI Case Reported
+ *      → AEFI Form and Kit Details → Summary → AEFI Case Reported
  * Home → Manage Stock → Record AEFI Forms and Kits → AEFI Forms and Kits Recorded
- *      (the other stock records are listed but not built)
+ * Home → Manage Stock → Receipt | Issued | Returned | Discrepancy
+ *      — the same flows as the inventory app (github.com/niharikasuri-bit/inventory),
+ *        with AEFI forms and AEFI kits (adrenaline) as resources next to the polio vaccine.
  *
  * The polio Outside Household screens below are kept from the polio-app copy.
  *
@@ -72,15 +74,80 @@
   };
 
   // Vaccines offered for "Vaccine administered" — placeholder list until the real one is supplied.
-  // Record AEFI Forms and Kits — the four indicators, worded as in the requirement. A Yes opens a quantity.
+  // Record AEFI Forms and Kits — the four indicators. A Yes opens a quantity.
+  // "Used" depends on "available": it is only asked once the item is available.
   const STOCK_QUESTIONS = [
-    { id: "stk-form-available", key: "formAvailable", label: "Is an AEFI form available?", qty: "Quantity available" },
-    { id: "stk-form-used", key: "formUsed", label: "Has an AEFI form been used?", qty: "Quantity used" },
-    { id: "stk-kit-available", key: "kitAvailable", label: "Is an AEFI kit (adrenaline) available?", qty: "Quantity available" },
-    { id: "stk-kit-used", key: "kitUsed", label: "Has an AEFI kit (adrenaline) been used?", qty: "Quantity used" }
+    { id: "stk-form-available", key: "formAvailable", label: "Is an AEFI form available?", qty: "How many AEFI forms are available?" },
+    { id: "stk-form-used", key: "formUsed", label: "Has an AEFI form been used for reporting AEFI cases?", qty: "How many AEFI forms have been used?", dependsOn: "formAvailable" },
+    { id: "stk-kit-available", key: "kitAvailable", label: "Is an AEFI kit (adrenaline) available?", qty: "How many AEFI kits (adrenaline) are available?" },
+    { id: "stk-kit-used", key: "kitUsed", label: "Has an AEFI kit (adrenaline) been used for managing AEFI cases?", qty: "How many AEFI kits (adrenaline) have been used?", dependsOn: "kitAvailable" }
   ];
+  const askedStock = (q, s) => !q.dependsOn || s[q.dependsOn] === "Yes";
   const freshStock = () => Object.fromEntries(STOCK_QUESTIONS.flatMap(q => [[q.key, ""], [`${q.key}Qty`, ""]]));
   const isWholeAtLeastOne = v => /^\d+$/.test(v.trim()) && Number(v) > 0;
+
+  // ---------- Manage Stock ----------
+  // AEFI forms and kits move through the stock flows like any other resource.
+  const STOCK_RESOURCES = [
+    { name: "Polio vaccine (OPV)", unit: "vials", available: 500 },
+    { name: "AEFI forms", unit: "forms", available: 100 },
+    { name: "AEFI kits (adrenaline)", unit: "kits", available: 10 }
+  ];
+  const resIndex = name => STOCK_RESOURCES.findIndex(r => r.name === name);
+  const resUnit = name => STOCK_RESOURCES[resIndex(name)].unit;
+  const CURRENT_FACILITY = "Central Ward Health Facility";
+  const FACILITIES = ["District Vaccine Store", "North Ward Health Post", "Riverside Health Post", "Old Town Health Post"];
+  const TRANSPORT_TYPES = ["Truck", "Van", "Motorcycle", "Cycle", "Boat", "Other"];
+  // Report Stock Discrepancy asks what caused it (the separate Damaged record was dropped).
+  const DISCREPANCY_REASONS = ["Damage in transit", "Damage in storage"];
+  // Stock sent to this facility — received in Stock Receipt, reported against in Discrepancy.
+  const STOCK_TXNS = [
+    { id: "TXN-6486482", from: "District Vaccine Store", date: "25 Oct 2026", time: "10:45",
+      items: { "Polio vaccine (OPV)": 120, "AEFI forms": 50, "AEFI kits (adrenaline)": 5 } },
+    { id: "TXN-6486510", from: "District Vaccine Store", date: "24 Oct 2026", time: "16:20",
+      items: { "Polio vaccine (OPV)": 80, "AEFI forms": 20 } },
+    { id: "TXN-6486233", from: "North Ward Health Post", date: "20 Oct 2026", time: "08:05",
+      items: { "AEFI kits (adrenaline)": 4 } }
+  ];
+  // Stock Receipt list, as in the inventory app: each resource carries its own status.
+  const freshReceipts = () => [
+    ...STOCK_TXNS.map(t => ({ id: t.id, from: t.from, date: t.date, time: t.time, status: "pending",
+      resources: Object.entries(t.items).map(([name, quantity]) => ({ name, quantity, status: "pending" })) })),
+    { id: "TXN-6485901", from: "District Vaccine Store", date: "18 Oct 2026", time: "14:32", status: "confirmed",
+      resources: [{ name: "Polio vaccine (OPV)", quantity: 200, received: 200, status: "confirmed" },
+                  { name: "AEFI forms", quantity: 40, received: 40, status: "confirmed" }] },
+    { id: "TXN-6485770", from: "North Ward Health Post", date: "15 Oct 2026", time: "09:15", status: "discrepancy",
+      resources: [{ name: "Polio vaccine (OPV)", quantity: 100, received: 95, status: "discrepancy", reason: "Damage in transit" },
+                  { name: "AEFI kits (adrenaline)", quantity: 6, received: 6, status: "confirmed" }] }
+  ];
+  // Pending while any resource is unprocessed; otherwise Discrepancy if any resource has one, else Confirmed.
+  const deriveStatus = rs => rs.some(r => r.status === "pending") ? "pending" : rs.some(r => r.status === "discrepancy") ? "discrepancy" : "confirmed";
+  const SORT_OPTIONS = [["newest", "Date — Newest First"], ["oldest", "Date — Oldest First"], ["facility", "Facility Name (A–Z)"]];
+  const freshRc = () => ({ txns: freshReceipts(), tab: "pending", search: "", sort: "newest", draft: "newest", sortOpen: false,
+    txnId: null, resIdx: null, wasPending: false, scans: 0, scanned: false, mismatch: false, rcv: "", reason: "", comment: "", qr: false });
+  const rcTxn = () => state.rc.txns.find(t => t.id === state.rc.txnId);
+  const rcRes = () => rcTxn().resources[state.rc.resIdx];
+
+  // Copy follows the inventory app's Manage Stock cards, screens and success messages.
+  const STOCK_FLOWS = {
+    receipt: { icon: "receipt", card: "Record Stock Receipt", sub: "Record stock received at the warehouse and confirm the resources received.",
+      start: "receiptList",
+      success: "Stock Received Successfully", successDesc: "The stock receipt has been recorded successfully. The received resources are now added to the warehouse stock.", again: "Record Another Receipt" },
+    issue: { icon: "issue", card: "Record Stock Issued", sub: "Create a record stock issued from the warehouse to another facility, warehouse, or user.",
+      start: "stockForm", formTitle: "Record Stock Issue", fromLabel: "Issued from", toLabel: "Issued to", qtyLabel: "Quantity to issue",
+      success: "Stock Issued Successfully", successDesc: "The stock issue has been recorded successfully. The issued resources have been deducted from the warehouse stock.", again: "Issue More Stock" },
+    return: { icon: "returned", card: "Record Stock Returned", sub: "Record stock items returned from field teams or distribution points.",
+      start: "stockForm", formTitle: "Record Stock Return", fromLabel: "Returned from", toLabel: "Returned to", qtyLabel: "Quantity to return",
+      success: "Return Recorded Successfully", successDesc: "The stock return has been recorded successfully. The returned resources have been added to the warehouse stock.", again: "Record Another Return" },
+    discrepancy: { icon: "discrepancy", card: "Report Stock Discrepancy", sub: "Report a discrepancy between expected and received stock quantities.",
+      start: "stockTxns", txnDesc: "Select the transaction for which the discrepancy is being reported.", txnCta: "Report Discrepancy",
+      pickTitle: "Select Resource", pickLegend: "Select the resource(s) with discrepancy", detail: "stockDiscrepancy",
+      success: "Stock Discrepancy Reported", successDesc: "The stock discrepancy has been recorded successfully for review.", again: "Report Another Discrepancy" }
+  };
+  const freshSf = flow => ({ flow, txnId: null, picked: [], qty: {}, reason: {}, why: {}, actual: {},
+    resOpen: false, to: "", vehicle: "", how: "", waybill: "", wbcount: "", transport: "", transportid: "", comments: "" });
+  const SF = () => STOCK_FLOWS[state.sf.flow];
+  const sfTxn = () => STOCK_TXNS.find(t => t.id === state.sf.txnId);
 
   const VACCINES = ["OPV (Oral Polio)", "IPV (Inactivated Polio)", "Measles-Rubella", "Pentavalent", "BCG", "Rotavirus"];
   const AEFI_TYPES = ["Serious", "Minor"];
@@ -97,11 +164,24 @@
     aefiOverview: { name: "AEFI Cases Overview", desc: () => "Report adverse events following vaccination and track the number of reported cases." },
     aefiChild:   { name: "Child Details", desc: () => "Add details of the child who had the adverse event." },
     aefiDetails: { name: "AEFI Case Details", desc: () => "Add details about the vaccine given and the adverse event that followed." },
+    aefiKit:     { name: "AEFI Form and Kit Details", desc: () => "Record whether an AEFI form and an AEFI kit (adrenaline) were used for this case." },
     aefiSummary: { name: "Summary", desc: () => "Check the details before you submit the report." },
     aefiSuccess: { name: "AEFI Case Reported", desc: () => "The adverse event has been reported successfully." },
     manageStock: { name: "Manage Stock", desc: () => "" },
     aefiStock:   { name: "Record AEFI Forms and Kits", desc: () => "Record AEFI forms and kits (adrenaline) available and used." },
-    aefiStockSuccess: { name: "AEFI Forms and Kits Recorded", desc: () => "The AEFI forms and kits have been recorded successfully." }
+    aefiStockSuccess: { name: "AEFI Forms and Kits Recorded", desc: () => "The AEFI forms and kits have been recorded successfully." },
+    stockTxns: { name: () => state.sf.flow === "receipt" ? "Stock Receipt" : "Select Transaction", desc: () => SF().txnDesc || SF().sub },
+    receiptList: { name: "Stock Receipt", desc: () => "Record stock received at the warehouse and confirm the resources received." },
+    stockReceipt: { name: () => state.rc.wasPending ? "Receive Stock" : "Stock Receipt",
+      desc: () => state.rc.wasPending ? "Confirm each resource received or report a discrepancy." : "The resources received in this transaction." },
+    receiptConfirm: { name: "Confirm Receipt", desc: () => "Scan the resources received, then confirm the receipt." },
+    receiptScan: { name: "Scan QR Code", desc: () => "Point the camera at the resource QR code." },
+    receiptReport: { name: "Report Discrepancy", desc: () => "Add the quantity received for this resource." },
+    stockForm: { name: () => SF().formTitle, desc: () => SF().sub },
+    stockShipment: { name: "Shipment Details", desc: () => "Add the shipment and transport details." },
+    stockPick: { name: () => SF().pickTitle, desc: () => `${SF().pickLegend}.` },
+    stockDiscrepancy: { name: "Report Stock Discrepancy", desc: () => "Add the quantity that was actually received and what caused the difference." },
+    stockSuccess: { name: () => SF().success, desc: () => SF().successDesc }
   };
   const screenName = (route, kind) => { const n = SCREENS[route].name; return typeof n === "function" ? n(kind) : n; };
 
@@ -150,6 +230,8 @@
     child: { name: "", dob: "", years: "", months: "", gender: "" },
     aefi: null,
     stock: null,
+    sf: null,             // the Manage Stock record in progress (Receipt, Issued, Returned, Discrepancy)
+    rc: null,             // Stock Receipt list and the receipt being received (kept for the session, like the inventory app)
     fromSummary: false,   // editing a section from Summary: Continue returns straight there
     errors: {}
   };
@@ -180,7 +262,7 @@
   }
   // Child name, DOB/age and gender live in state.child so the shared Child Details fields work unchanged.
   const freshAefi = () => ({ vaccine: "Measles-Rubella",   // preselected; can be changed
-    vaxDate: "", onsetDate: "", type: "", desc: "" });
+    vaxDate: "", onsetDate: "", type: "", desc: "", formUsed: "", kitUsed: "" });
   const MAX_AGE_MONTHS = 59;
   // "2026-10-10" → "10 Oct 2026"
   const shortDate = iso => iso ? new Date(`${iso}T00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";   // polio target group: under 5 years
@@ -226,8 +308,12 @@
     receipt: '<svg class="stock-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>',
     issue: '<svg class="stock-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>',
     returned: '<svg class="stock-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>',
-    damaged: '<svg class="stock-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2 4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>',
     discrepancy: '<svg class="stock-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>',
+    close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>',
+    sort: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></svg>',
+    qr: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 3v8h8V3h-8zm6 6h-4V5h4v4zM19 19h2v2h-2zM13 13h2v2h-2zM15 15h2v2h-2zM13 17h2v2h-2zM15 19h2v2h-2zM17 17h2v2h-2zM17 13h2v2h-2zM19 15h2v2h-2z"/></svg>',
+    inbox: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 3H4.99c-1.11 0-1.98.89-1.98 2L3 19c0 1.1.88 2 1.99 2H19c1.1 0 2-.9 2-2V5c0-1.11-.9-2-2-2zm0 12h-4c0 1.66-1.35 3-3 3s-3-1.34-3-3H4.99V5H19v10z"/></svg>',
+    clock: '<svg class="txn-clock" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>',
     medKit: '<svg class="stock-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20 6h-4V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM10 4h4v2h-4V4zm6 11h-3v3h-2v-3H8v-2h3v-3h2v3h3v2z"/></svg>',
     error: '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="currentColor"/><path d="M8 4.5v4.2" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="11.3" r="1" fill="#fff"/></svg>'
   };
@@ -238,13 +324,13 @@
   const pairs = rows => `<dl class="pairs">${rows.map(([l, v]) => `<div class="pair"><dt>${esc(l)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>`;
   const errorText = (id, msg) => `<p class="field-error" id="${id}-err" ${msg ? "" : "hidden"}>${ICON.error}<span>${esc(msg || "")}</span></p>`;
 
-  function textField({ id, label, value, required, type = "text", help, inputmode, autocomplete = "off", autocapitalize }) {
+  function textField({ id, label, value, required, type = "text", help, inputmode, autocomplete = "off", autocapitalize, readonly }) {
     const err = state.errors[id];
     const describedBy = [help ? `${id}-help` : "", `${id}-err`].filter(Boolean).join(" ");
     return `<div class="field">
       <label class="field-label" for="${id}">${esc(label)}${required ? '<span class="req" aria-hidden="true">*</span>' : ""}</label>
       <input class="input ${err ? "invalid" : ""}" id="${id}" name="${id}" type="${type}" value="${esc(value)}" autocomplete="${autocomplete}"
-        ${inputmode ? `inputmode="${inputmode}"` : ""} ${autocapitalize ? `autocapitalize="${autocapitalize}"` : ""} ${required ? 'aria-required="true"' : ""} aria-invalid="${!!err}" aria-describedby="${describedBy}" />
+        ${inputmode ? `inputmode="${inputmode}"` : ""} ${autocapitalize ? `autocapitalize="${autocapitalize}"` : ""} ${readonly ? 'readonly aria-readonly="true"' : ""} ${required ? 'aria-required="true"' : ""} aria-invalid="${!!err}" aria-describedby="${describedBy}" />
       ${help ? `<p class="field-help" id="${id}-help">${esc(help)}</p>` : ""}
       ${errorText(id, err)}
     </div>`;
@@ -347,6 +433,120 @@
     return "";
   }
 
+  // ---------- Manage Stock components ----------
+  // Resource / Qty manifest on a transaction card.
+  const resTable = (t, heading) => `<table class="res-table">
+      <thead><tr><th scope="col">${esc(heading)}</th><th scope="col">Qty</th></tr></thead>
+      <tbody>${Object.entries(t.items).map(([n, q]) => `<tr><td>${esc(n)}</td><td>${q}</td></tr>`).join("")}</tbody>
+    </table>`;
+
+  // Stock Receipt list card: outcome tag and accent once received; the manifest shows the first 3 resources.
+  function receiptCard(t) {
+    const pending = t.status === "pending";
+    return `<li class="card txn-card ${pending ? "" : t.status}">
+        <p class="txn-time">${ICON.clock}${pending ? "Issued on" : "Received on"} ${esc(t.date)} | ${esc(t.time)}</p>
+        <div class="txn-main">
+          <div class="res-head"><h2 class="txn-id">${esc(t.id)}</h2>${pending ? "" : `<span class="status-chip">${t.status === "confirmed" ? "Completely Received" : "Partially Received"}</span>`}</div>
+          <div class="txn-from"><span>Issued from</span><b>${esc(t.from)}</b></div>
+          <table class="res-table">
+            <thead><tr><th scope="col">${pending ? "Resources issued" : "Resources received"}</th><th scope="col">Qty</th></tr></thead>
+            <tbody>${t.resources.slice(0, 3).map(r => `<tr class="${r.status === "discrepancy" ? "row-diff" : ""}"><td>${esc(r.name)}</td><td>${r.received ?? r.quantity}</td></tr>`).join("")}</tbody>
+          </table>
+          <button class="btn ${pending ? "btn-primary" : "btn-secondary"}" data-action="rc-open" data-id="${t.id}">${pending ? "Receive Stock" : "View Receipt"}</button>
+        </div>
+      </li>`;
+  }
+
+  function receiptListHtml() {
+    const rc = state.rc, q = rc.search.trim().toLowerCase();
+    const list = rc.txns
+      .filter(t => (rc.tab === "pending") === (t.status === "pending"))
+      .filter(t => !q || t.id.toLowerCase().includes(q) || t.from.toLowerCase().includes(q) || t.resources.some(r => r.name.toLowerCase().includes(q)))
+      .sort((a, b) => rc.sort === "facility" ? a.from.localeCompare(b.from)
+        : (rc.sort === "oldest" ? 1 : -1) * (Date.parse(a.date) - Date.parse(b.date)));
+    if (!list.length) return `<p class="rc-empty">${ICON.inbox}${rc.tab === "pending" ? "No stock receipts to receive" : "No completed stock receipts"}</p>`;
+    return `<ul class="txn-list">${list.map(receiptCard).join("")}</ul>`;
+  }
+
+  // Sort sheet: the choice only applies on Apply; Clear goes back to the default.
+  const sortSheet = () => `<div class="sheet-backdrop dialog-backdrop sort-backdrop">
+      <div class="dialog sort-dialog" role="dialog" aria-modal="true" aria-labelledby="sort-title">
+        <h2 class="sort-title" id="sort-title">${ICON.sort}Sort</h2>
+        <fieldset class="secondary-container sort-box">
+          <legend class="sort-legend">Sort by</legend>
+          ${SORT_OPTIONS.map(([k, l]) => `<label class="radio"><input type="radio" name="sf-sort" value="${k}" ${state.rc.draft === k ? "checked" : ""}/>${esc(l)}</label>`).join("")}
+        </fieldset>
+        <div class="footer-row"><button class="btn btn-secondary" data-action="rc-sort-clear">Clear</button><button class="btn btn-primary" data-action="rc-sort-apply">Apply</button></div>
+      </div>
+    </div>`;
+
+  const mismatchDialog = () => `<div class="sheet-backdrop dialog-backdrop">
+      <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="mm-title" aria-describedby="mm-desc">
+        <h2 class="dialog-title" id="mm-title">${ICON.discrepancy}Stock Quantity Mismatch</h2>
+        <p id="mm-desc">The quantity scanned does not match the expected quantity. Please review the quantities before confirming receipt.</p>
+        <button class="btn btn-primary" data-action="rc-mismatch-confirm">Confirm Receipt</button>
+        <button class="btn btn-secondary" data-action="rc-mismatch-back">Go Back</button>
+      </div>
+    </div>`;
+
+  // Which transaction and resource a Confirm Receipt / Report Discrepancy screen is about.
+  const resTag = (line, name) => `<div class="res-tag"><span>${esc(line)}</span><b>${esc(name)}</b></div>`;
+
+  // Reason for discrepancy: damage (dropdown) explains a shortfall; when more was received
+  // than expected the dropdown is replaced by a required comment.
+  const isOver = (raw, expected) => /^\d+$/.test(String(raw ?? "").trim()) && Number(raw) > expected;
+  function reasonFields(i, name, expected) {
+    const f = state.sf, over = isOver(f.actual[name], expected);
+    return `<div id="sf-reason-${i}-wrap" ${over ? "hidden" : ""}>
+        ${selectField({ id: `sf-reason-${i}`, label: "Reason for discrepancy", value: f.reason[name] || "", options: DISCREPANCY_REASONS, required: true })}
+      </div>
+      <div id="sf-why-${i}-wrap" ${over ? "" : "hidden"}>
+        ${textArea({ id: `sf-why-${i}`, label: "Reason for discrepancy", value: f.why[name] || "", required: true, placeholder: "Explain why more was received than expected" })}
+      </div>`;
+  }
+
+  // Signed difference between the quantity received and expected: red for a shortfall, green for an overage.
+  function diffTag(raw, expected, unit) {
+    if (raw == null || !/^\d+$/.test(String(raw).trim())) return "";
+    const diff = Number(raw) - expected;
+    return diff ? `<span class="diff-tag ${diff < 0 ? "short" : "over"}">${diff > 0 ? "+" : "-"}${Math.abs(diff)} ${esc(unit)}</span>` : "";
+  }
+
+  // Resource(s) multi-select dropdown, as in the inventory app: the trigger shows "N Selected",
+  // the panel stays open while picking, and the picks show as chips with Clear All.
+  function resourceDropdown() {
+    const err = state.errors["sf-res"], f = state.sf, open = f.resOpen;
+    return `<div class="field ms" id="sf-res-group">
+        <label class="field-label" id="sf-res-label" for="sf-res">Resource(s)${reqMark(true)}</label>
+        <div class="select-wrap">
+          <button type="button" class="input ms-trigger ${err ? "invalid" : ""} ${f.picked.length ? "" : "is-empty"}" id="sf-res" data-action="sf-res-open"
+            aria-haspopup="true" aria-expanded="${!!open}" aria-controls="sf-res-panel" aria-labelledby="sf-res-label sf-res" aria-invalid="${!!err}" aria-describedby="sf-res-err">${f.picked.length ? `${f.picked.length} Selected` : "Select resource(s)"}</button>${ICON.caret}
+        </div>
+        <fieldset class="ms-panel" id="sf-res-panel" ${open ? "" : "hidden"}>
+          <legend class="sr-only">Resource(s)</legend>
+          ${STOCK_RESOURCES.map(r => `<label class="checkbox"><input type="checkbox" name="sf-res" value="${esc(r.name)}" ${f.picked.includes(r.name) ? "checked" : ""}/><span class="box">${ICON.tick}</span>${esc(r.name)}</label>`).join("")}
+        </fieldset>
+        ${f.picked.length ? `<div class="ms-chips">
+            ${f.picked.map(n => `<span class="ms-chip">${esc(n)}</span>`).join("")}
+            <button type="button" class="ms-clear" data-action="sf-res-clear">Clear All</button>
+          </div>` : ""}
+        ${errorText("sf-res", err)}
+      </div>`;
+  }
+
+  // Resource checkboxes; each checked resource can show its own fields (extra) right under it.
+  function resourceChecks(legend, names, extra = () => "") {
+    const err = state.errors["sf-res"], picked = state.sf.picked;
+    return `<fieldset class="field plain-fieldset ${err ? "has-error" : ""}" id="sf-res-group" aria-describedby="sf-res-err" aria-required="true">
+        <legend class="field-label">${esc(legend)}${reqMark(true)}</legend>
+        <div class="checklist res-checks">
+          ${names.map(n => `<div><label class="checkbox"><input type="checkbox" name="sf-res" value="${esc(n)}" ${picked.includes(n) ? "checked" : ""}/><span class="box">${ICON.tick}</span>${esc(n)}</label>
+            ${picked.includes(n) ? extra(n) : ""}</div>`).join("")}
+        </div>
+        ${errorText("sf-res", err)}
+      </fieldset>`;
+  }
+
   // ---------- Screens ----------
   // Each returns { tag, body, footer }.
   const VIEWS = {
@@ -432,6 +632,19 @@
       };
     },
 
+    aefiKit() {
+      return {
+        tag: ASSIGNED_AREA,
+        body: `${title("AEFI Form and Kit Details")}
+          <div class="card">
+            ${radioGroup({ id: "aefi-form-used", legend: "Was an AEFI form used for this case?", value: state.aefi.formUsed, options: ["Yes", "No"], required: true })}
+            <hr class="q-divider" />
+            <div>${radioGroup({ id: "aefi-kit-used", legend: "Was an AEFI kit (adrenaline) used for this case?", value: state.aefi.kitUsed, options: ["Yes", "No"], required: true })}</div>
+          </div>`,
+        footer: `<button class="btn btn-primary" data-action="aefi-kit-continue">Continue</button>`
+      };
+    },
+
     aefiSummary() {
       // Two section cards, each with its heading and an Edit link that jumps back to that page.
       const a = state.aefi, c = state.child;
@@ -457,6 +670,10 @@
             ["Date of AEFI onset", shortDate(a.onsetDate)],
             ["AEFI type", a.type],
             ["Description", a.desc.trim()]
+          ])}
+          ${section("AEFI Form and Kit Details", "aefiKit", [
+            ["AEFI form used", a.formUsed],
+            ["AEFI kit used", a.kitUsed]
           ])}`,
         footer: `<button class="btn btn-primary" data-action="aefi-confirm">Submit</button>`
       };
@@ -481,19 +698,15 @@
     },
 
     manageStock() {
-      // Same list of stock records as the inventory app; only Record AEFI Forms and Kits is built here.
-      const card = (action, icon, label, sub) => `<li><button class="stock-card" data-action="${action}" data-label="${esc(label)}">
+      // Same list of stock records as the inventory app, plus Record AEFI Forms and Kits.
+      const card = (action, icon, label, sub, flow = "") => `<li><button class="stock-card" data-action="${action}" ${flow ? `data-flow="${flow}"` : ""}>
           ${ICON[icon]}<span class="stock-title">${esc(label)}</span><span class="stock-sub">${esc(sub)}</span>
         </button></li>`;
       return {
         tag: ASSIGNED_AREA,
         body: `${title("Manage Stock")}
           <ul class="stock-list" aria-labelledby="page-title">
-            ${card("not-in-prototype", "receipt", "Record Stock Receipt", "Record stock received at the warehouse and confirm the resources received.")}
-            ${card("not-in-prototype", "issue", "Record Stock Issued", "Create a record stock issued from the warehouse to another facility, warehouse, or user.")}
-            ${card("not-in-prototype", "returned", "Record Stock Returned", "Record stock items returned from field teams or distribution points.")}
-            ${card("not-in-prototype", "damaged", "Record Stock Damaged", "Record stock items that have been damaged during transit or storage.")}
-            ${card("not-in-prototype", "discrepancy", "Report Stock Discrepancy", "Report a discrepancy between expected and received stock quantities.")}
+            ${Object.entries(STOCK_FLOWS).map(([flow, f]) => card("sf-open", f.icon, f.card, f.sub, flow)).join("")}
             ${card("aefi-stock", "medKit", "Record AEFI Forms and Kits", "Record AEFI forms and kits (adrenaline) available and used.")}
           </ul>`,
         footer: ""
@@ -502,18 +715,31 @@
 
     aefiStock() {
       const s = state.stock;
-      // Each Yes opens its quantity in a grey container; a divider separates the form pair from the kit pair.
-      const question = q => `${radioGroup({ id: q.id, legend: q.label, value: s[q.key], options: ["Yes", "No"], required: true })}
-        <div class="secondary-container dependent" id="${q.id}-wrap" ${s[q.key] === "Yes" ? "" : "hidden"}>
-          ${textField({ id: `${q.id}-qty`, label: q.qty, value: s[`${q.key}Qty`], required: true, inputmode: "numeric" })}
-        </div>`;
+      // A Yes opens secondary containers below the Yes / No options. For "available": one with how many,
+      // and one with the dependent "used" question, whose Yes in turn opens how many were used.
+      const question = q => {
+        const err = state.errors[q.id], dep = STOCK_QUESTIONS.find(d => d.dependsOn === q.key);
+        const opt = v => `<label class="radio"><input type="radio" name="${q.id}" value="${v}" ${s[q.key] === v ? "checked" : ""}/>${v}</label>`;
+        return `<fieldset class="field radios stock-q ${err ? "has-error" : ""}" id="${q.id}-group" aria-describedby="${q.id}-err" aria-required="true">
+            <legend>${esc(q.label)}${reqMark(true)}</legend>
+            ${opt("Yes")}
+            ${opt("No")}
+            ${errorText(q.id, err)}
+            <div class="dep-stack" id="${q.id}-wrap" ${s[q.key] === "Yes" ? "" : "hidden"}>
+              <div class="secondary-container">
+                ${textField({ id: `${q.id}-qty`, label: q.qty, value: s[`${q.key}Qty`], inputmode: "numeric" })}
+              </div>
+              ${dep ? `<div class="secondary-container">${question(dep)}</div>` : ""}
+            </div>
+          </fieldset>`;
+      };
       return {
         tag: ASSIGNED_AREA,
         body: `${title("Record AEFI Forms and Kits")}
           <div class="card">
-            ${STOCK_QUESTIONS.slice(0, 2).map(question).join("")}
+            ${question(STOCK_QUESTIONS[0])}
             <hr class="q-divider" />
-            ${STOCK_QUESTIONS.slice(2).map(question).join("")}
+            <div>${question(STOCK_QUESTIONS[2])}</div>
           </div>`,
         footer: `<button class="btn btn-primary" data-action="aefi-stock-submit">Submit</button>`
       };
@@ -530,6 +756,225 @@
             <p class="success-desc">${esc(SCREENS.aefiStockSuccess.desc())}</p>
             <div class="panel-actions">
               <button class="btn btn-primary" data-action="aefi-stock">Record Again</button>
+              <button class="btn btn-secondary" data-action="go-home">Go to Home</button>
+            </div>
+          </div>`,
+        footer: ""
+      };
+    },
+
+    // ---------- Manage Stock flows ----------
+    stockTxns() {
+      const f = state.sf, receipt = f.flow === "receipt";
+      const card = t => `<li class="card txn-card">
+          <p class="txn-time">${ICON.clock}${receipt ? "Issued on" : "Received on"} ${esc(t.date)} | ${esc(t.time)}</p>
+          <div class="txn-main">
+            <h2 class="txn-id">${esc(t.id)}</h2>
+            <div class="txn-from"><span>Issued from</span><b>${esc(t.from)}</b></div>
+            ${resTable(t, receipt ? "Resources issued" : "Resources received")}
+            <button class="btn btn-primary" data-action="sf-txn" data-id="${t.id}">${esc(SF().txnCta)}</button>
+          </div>
+        </li>`;
+      return {
+        tag: ASSIGNED_AREA,
+        body: `${title(screenName("stockTxns"))}
+          <ul class="txn-list">${STOCK_TXNS.map(card).join("")}</ul>`,
+        footer: ""
+      };
+    },
+
+    // Stock Receipt follows the inventory app: list (Yet to Receive | Received, search, sort)
+    // → Receive Stock → per resource Confirm Receipt (with QR scan) or Report Discrepancy → Submit.
+    receiptList() {
+      const rc = state.rc;
+      return {
+        tag: ASSIGNED_AREA,
+        body: `${title("Stock Receipt")}
+          <div class="card seg-card">
+            <div class="seg" role="tablist" aria-label="Stock receipts">
+              ${[["pending", "Yet to Receive"], ["received", "Received"]].map(([k, l]) => `<button class="seg-tab" role="tab" aria-selected="${rc.tab === k}" data-action="rc-tab" data-tab="${k}">${l}</button>`).join("")}
+            </div>
+          </div>
+          <div class="rc-tools">
+            <div class="rc-search">${ICON.search}<input class="input" id="sf-search" type="search" value="${esc(rc.search)}" autocomplete="off"
+              placeholder="Search resource or transaction ID" aria-label="Search resource or transaction ID" aria-controls="rc-list" /></div>
+            <button class="rc-sort" data-action="rc-sort-open" aria-haspopup="dialog">${ICON.sort}Sort</button>
+          </div>
+          <div id="rc-list" role="tabpanel" aria-live="polite">${receiptListHtml()}</div>`,
+        footer: "",
+        overlay: rc.sortOpen ? sortSheet() : ""
+      };
+    },
+
+    stockReceipt() {
+      const rc = state.rc, t = rcTxn();
+      const BADGE = { pending: "Not Received", confirmed: "Completely Received", discrepancy: "Partially Received" };
+      const item = (r, i) => {
+        const done = r.status !== "pending", unit = resUnit(r.name);
+        return `<section class="card res-card ${r.status}" id="rc-st-${i}" tabindex="-1" aria-labelledby="rc-name-${i}">
+            <div class="res-head"><h3 class="summary-heading" id="rc-name-${i}">${esc(r.name)}</h3><span class="status-chip">${BADGE[r.status]}</span></div>
+            <div class="res-qty">
+              <p class="res-expected"><span>Expected</span><b>${r.quantity} ${esc(unit)}</b></p>
+              ${done ? `<p class="res-expected res-received ${r.received !== r.quantity ? "diff" : ""}"><span>${r.status === "discrepancy" ? "Partially received" : "Received"}</span><b>${r.received} ${esc(unit)}</b></p>` : ""}
+            </div>
+            ${r.reason ? `<p class="res-expected res-reason"><span>Reason for discrepancy</span><b>${esc(r.reason)}</b></p>` : ""}
+            ${r.comment ? `<p class="res-expected res-reason"><span>Comment</span><b class="res-comment">${esc(r.comment)}</b></p>` : ""}
+            ${done ? "" : `<div class="res-actions">
+                <button class="btn btn-secondary" data-action="rc-report" data-r="${i}">Report Discrepancy</button>
+                <button class="btn btn-primary" data-action="rc-confirm" data-r="${i}">Confirm Receipt</button>
+              </div>`}
+            ${errorText(`rc-st-${i}`, state.errors[`rc-st-${i}`])}
+          </section>`;
+      };
+      return {
+        tag: ASSIGNED_AREA,
+        body: `${title(screenName("stockReceipt"))}
+          <div class="card">${pairs([["Transaction ID", t.id], ["Sending facility", t.from], ["Date received", t.date]])}</div>
+          <h2 class="section-title rc-res-title">Resources</h2>
+          ${t.resources.map(item).join("")}`,
+        // Submit only when the receipt was opened to receive it (not from View Receipt).
+        footer: rc.wasPending ? `<button class="btn btn-primary" data-action="rc-submit">Submit</button>` : ""
+      };
+    },
+
+    receiptConfirm() {
+      const rc = state.rc, r = rcRes();
+      const scanBtn = label => `<button class="btn btn-secondary scan-btn" data-action="rc-scan-open">${ICON.qr}${label}</button>`;
+      return {
+        tag: ASSIGNED_AREA,
+        body: `${title("Confirm Receipt")}
+          ${resTag(rcTxn().id, r.name)}
+          <div class="card">
+            ${textField({ id: "rc-expected", label: `Quantity expected (${resUnit(r.name)})`, value: r.quantity, readonly: true })}
+            ${rc.scans ? `<p class="scan-summary" role="status">${ICON.tick}${plural(rc.scans, "Resource")} Scanned</p>${scanBtn("Continue Scanning")}` : scanBtn("Scan Resources")}
+          </div>`,
+        footer: `<button class="btn btn-primary" data-action="rc-confirm-submit">Confirm Receipt</button>`,
+        overlay: rc.mismatch ? mismatchDialog() : ""
+      };
+    },
+
+    receiptScan() {
+      const rc = state.rc;
+      return {
+        tag: ASSIGNED_AREA,
+        body: `${title("Scan QR Code")}
+          <p class="page-desc" role="status">${rc.scanned ? "QR code scanned successfully." : "Point the camera at the resource QR code."}</p>
+          ${resTag(rcTxn().id, rcRes().name)}
+          <div class="scanner ${rc.scanned ? "done" : ""}" aria-hidden="true">${rc.scanned ? ICON.tick : '<span class="scan-line"></span>'}</div>`,
+        footer: rc.scanned
+          ? `<div class="footer-row"><button class="btn btn-secondary" data-action="rc-rescan">Rescan</button><button class="btn btn-primary" data-action="rc-scan-add">Add Scan</button></div>`
+          : `<button class="btn btn-primary" data-action="rc-scan">${ICON.qr}Scan QR Code</button>`
+      };
+    },
+
+    receiptReport() {
+      const rc = state.rc, r = rcRes(), unit = resUnit(r.name);
+      return {
+        tag: ASSIGNED_AREA,
+        body: `${title("Report Discrepancy")}
+          ${resTag(rcTxn().id, r.name)}
+          <div class="card">
+            ${textField({ id: "rc-expected", label: `Quantity expected (${unit})`, value: r.quantity, readonly: true })}
+            ${textField({ id: "sf-rcv", label: `Quantity received (${unit})`, value: rc.rcv, required: true, inputmode: "numeric" })}
+            <p class="diff-wrap" id="sf-diff">${diffTag(rc.rcv, r.quantity, unit)}</p>
+            <div id="sf-reason-wrap">
+              ${selectField({ id: "sf-reason", label: "Reason for discrepancy", value: rc.reason, options: DISCREPANCY_REASONS, required: true })}
+            </div>
+            ${textArea({ id: "sf-comment", label: "Comment", value: rc.comment })}
+            <button class="btn btn-secondary scan-btn" data-action="rc-qr" ${rc.qr ? "disabled" : ""}>${ICON.qr}${rc.qr ? "QR Scanned ✓" : "Scan QR Code"}</button>
+          </div>`,
+        footer: `<button class="btn btn-primary" data-action="rc-report-submit">Submit</button>`
+      };
+    },
+
+    stockForm() {
+      const f = state.sf, cfg = SF(), issue = f.flow === "issue";
+      // One card per selected resource, in the order picked; X removes it (as in the inventory app).
+      const qty = name => {
+        const i = resIndex(name), r = STOCK_RESOURCES[i];
+        return `<section class="secondary-container res-qty-card" aria-labelledby="sf-name-${i}">
+            <div class="res-head">
+              <h2 class="res-qty-name" id="sf-name-${i}">${esc(name)}</h2>
+              <button class="icon-x" data-action="sf-res-remove" data-i="${i}" aria-label="Remove ${esc(name)}">${ICON.close}</button>
+            </div>
+            ${textField({ id: `sf-qty-${i}`, label: `${cfg.qtyLabel} (${r.unit})`, value: f.qty[name] || "", required: true, inputmode: "numeric",
+              help: issue ? `Available stock: ${r.available} ${r.unit}` : "" })}
+          </section>`;
+      };
+      return {
+        tag: ASSIGNED_AREA,
+        body: `${title(cfg.formTitle)}
+          <div class="card">
+            ${textField({ id: "sf-from", label: cfg.fromLabel, value: CURRENT_FACILITY, readonly: true })}
+            ${resourceDropdown()}
+            ${f.picked.map(qty).join("")}
+            ${selectField({ id: "sf-to", label: cfg.toLabel, value: f.to, options: FACILITIES, required: true })}
+            ${radioGroup({ id: "sf-vehicle", legend: "Was a vehicle involved during the transaction?", value: f.vehicle, options: ["Yes", "No"], required: true })}
+            <div id="sf-how-wrap" ${f.vehicle === "No" ? "" : "hidden"}>
+              ${textArea({ id: "sf-how", label: "How was the stock transferred?", value: f.how, placeholder: "Describe how the stock was transferred" })}
+            </div>
+          </div>`,
+        footer: `<button class="btn btn-primary" id="sf-form-btn" data-action="sf-form-continue">${f.vehicle === "Yes" ? "Continue" : "Submit"}</button>`
+      };
+    },
+
+    stockShipment() {
+      const f = state.sf;
+      return {
+        tag: ASSIGNED_AREA,
+        body: `${title("Shipment Details")}
+          <div class="card">
+            ${textField({ id: "sf-waybill", label: "Waybill number", value: f.waybill, required: true })}
+            ${textField({ id: "sf-wbcount", label: "Resources indicated on waybill", value: f.wbcount, inputmode: "numeric" })}
+            ${selectField({ id: "sf-transport", label: "Type of transport", value: f.transport, options: TRANSPORT_TYPES, required: true })}
+            ${textField({ id: "sf-transportid", label: "Transport number / ID", value: f.transportid })}
+            ${textArea({ id: "sf-comments", label: "Comments", value: f.comments, placeholder: "Add any additional context" })}
+          </div>`,
+        footer: `<button class="btn btn-primary" data-action="sf-ship-submit">Submit</button>`
+      };
+    },
+
+    stockPick() {
+      const cfg = SF();
+      return {
+        tag: ASSIGNED_AREA,
+        body: `${title(cfg.pickTitle)}
+          <div class="card">${resourceChecks(cfg.pickLegend, Object.keys(sfTxn().items))}</div>`,
+        footer: `<button class="btn btn-primary" data-action="sf-pick-continue">Continue</button>`
+      };
+    },
+
+    stockDiscrepancy() {
+      const f = state.sf, t = sfTxn();
+      const item = name => {
+        const i = resIndex(name), unit = resUnit(name);
+        return `<section class="card" aria-labelledby="sf-name-${i}">
+            <h2 class="summary-heading" id="sf-name-${i}">${esc(name)}</h2>
+            ${textField({ id: `sf-expected-${i}`, label: `Expected quantity (${unit})`, value: t.items[name], readonly: true })}
+            ${textField({ id: `sf-actual-${i}`, label: `Actual quantity received (${unit})`, value: f.actual[name] || "", required: true, inputmode: "numeric", help: "Enter the quantity that was actually received." })}
+            <p class="diff-wrap" id="sf-diff-${i}">${diffTag(f.actual[name], t.items[name], unit)}</p>
+            ${reasonFields(i, name, t.items[name])}
+          </section>`;
+      };
+      return {
+        tag: ASSIGNED_AREA,
+        body: `${title("Report Stock Discrepancy")}${f.picked.map(item).join("")}`,
+        footer: `<button class="btn btn-primary" data-action="sf-disc-submit">Submit</button>`
+      };
+    },
+
+    stockSuccess() {
+      const cfg = SF();
+      return {
+        tag: ASSIGNED_AREA,
+        body: `<div class="card panel-card">
+            <div class="success-panel" role="status">
+              ${ICON.check}
+              <h1 class="success-title" id="page-title" tabindex="-1">${esc(cfg.success)}</h1>
+            </div>
+            <p class="success-desc">${esc(cfg.successDesc)}</p>
+            <div class="panel-actions">
+              <button class="btn btn-primary" data-action="sf-again">${esc(cfg.again)}</button>
               <button class="btn btn-secondary" data-action="go-home">Go to Home</button>
             </div>
           </div>`,
@@ -750,6 +1195,7 @@
       <div class="status-bar" aria-hidden="true"></div>
       ${chrome}
       ${view.footer ? `<footer class="footer">${view.footer}</footer>` : ""}
+      ${view.overlay || ""}
       <div class="sheet-backdrop" id="help-sheet" hidden>
         <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="help-title">
           <div class="sheet-handle" aria-hidden="true"></div>
@@ -769,7 +1215,7 @@
 
   // Page description (from the APK screen list) sits directly under the page title.
   function withDescription(body) {
-    if (["success", "aefiSuccess", "aefiSummary", "manageStock", "aefiStockSuccess"].includes(state.route)) return body;   // description lives inside the success panel
+    if (["success", "aefiSuccess", "aefiSummary", "manageStock", "aefiStockSuccess", "stockSuccess", "receiptScan"].includes(state.route)) return body;   // description lives inside the success panel
     const desc = `<p class="page-desc" id="page-desc">${esc(SCREENS[state.route].desc(state.kind))}</p>`;
     return body.replace("</h1>", `</h1>${desc}`);
   }
@@ -829,6 +1275,41 @@
     return true;
   }
 
+  // ---------- Manage Stock helpers ----------
+  const qtyError = (v = "", max, maxMsg) => !v.trim() ? "Enter the quantity"
+    : !isWholeAtLeastOne(v) ? "Enter a whole number of 1 or more"
+    : max != null && Number(v) > max ? maxMsg : "";
+  const discrepancyError = (v = "", expected) => !v.trim() ? "Enter the quantity received"
+    : !/^\d+$/.test(v.trim()) ? "Enter a whole number"
+    : Number(v) === expected ? "Received quantity must be greater or less than the expected quantity to report a discrepancy." : "";
+  // Partially Received: what arrived must be less than what was expected.
+  const partialError = (v = "", expected) => !v.trim() ? "Enter the quantity received"
+    : !/^\d+$/.test(v.trim()) ? "Enter a whole number"
+    : Number(v) >= expected ? `Quantity received must be less than the expected quantity (${expected}).` : "";
+  const stockFormRecord = () => {
+    const f = state.sf;
+    return { from: CURRENT_FACILITY, to: f.to, resources: f.picked.map(n => ({ resource: n, quantity: f.qty[n] })), vehicle: f.vehicle, how: f.how };
+  };
+  function applyReceipt(status, received) {
+    const t = rcTxn(), r = rcRes();
+    Object.assign(r, { status, received: status === "confirmed" ? r.quantity : received });
+    t.status = deriveStatus(t.resources);
+    back();   // back to Receive Stock
+  }
+  function finishStock(record) {
+    (store.stockRecords || (store.stockRecords = [])).unshift({ type: state.sf.flow, ...record, area: ASSIGNED_AREA, recordedAt: new Date().toISOString() });
+    save();
+    state.history = ["home", "manageStock"];   // Back from the success screen returns to Manage Stock
+    go("stockSuccess", { replace: true });
+  }
+  // Re-render in place when a choice adds or removes fields, keeping the scroll position and focus.
+  function rerender(focusSelector) {
+    const top = document.getElementById("screen-body").scrollTop;
+    render({ focusTitle: false });
+    document.getElementById("screen-body").scrollTop = top;
+    if (focusSelector) document.querySelector(focusSelector)?.focus();
+  }
+
   // ---------- Actions ----------
   const ACTIONS = {
     back,
@@ -869,6 +1350,13 @@
         "aefi-type": a.type ? "" : "Select the AEFI type",
         "aefi-desc": a.desc.trim() ? "" : "Enter a description of the event"
       });
+      if (ok) state.fromSummary ? back() : go("aefiKit");
+    },
+    "aefi-kit-continue"() {
+      const ok = showErrors({
+        "aefi-form-used": state.aefi.formUsed ? "" : "Select Yes or No",
+        "aefi-kit-used": state.aefi.kitUsed ? "" : "Select Yes or No"
+      });
       if (ok) state.fromSummary ? back() : go("aefiSummary");
     },
     "aefi-edit"(btn) {
@@ -901,14 +1389,147 @@
     "aefi-stock-submit"() {
       const s = state.stock;
       const ok = showErrors(Object.fromEntries(STOCK_QUESTIONS.flatMap(q => [
-        [q.id, s[q.key] ? "" : "Select Yes or No"],
-        [`${q.id}-qty`, s[q.key] !== "Yes" ? "" : !s[`${q.key}Qty`].trim() ? "Enter the quantity"
-          : isWholeAtLeastOne(s[`${q.key}Qty`]) ? "" : "Enter a whole number of 1 or more"]
+        [q.id, s[q.key] || !askedStock(q, s) ? "" : "Select Yes or No"],
+        // Quantities are optional; when given they must be a whole number.
+        [`${q.id}-qty`, s[q.key] !== "Yes" || !s[`${q.key}Qty`].trim() || isWholeAtLeastOne(s[`${q.key}Qty`]) ? "" : "Enter a whole number of 1 or more"]
       ])));
       if (!ok) return;
       (store.aefiStock || (store.aefiStock = [])).unshift({ ...s, area: ASSIGNED_AREA, recordedAt: new Date().toISOString() });
       save();
       go("aefiStockSuccess", { replace: true });
+    },
+    // ---------- Manage Stock flows ----------
+    "sf-open"(btn) {
+      state.sf = freshSf(btn.dataset.flow);
+      if (btn.dataset.flow === "receipt") { state.rc = state.rc || freshRc(); state.rc.tab = "pending"; }
+      go(SF().start);
+    },
+    "sf-txn"(btn) {
+      const flow = state.sf.flow;
+      state.sf = { ...freshSf(flow), txnId: btn.dataset.id };
+      const names = Object.keys(sfTxn().items);
+      // A single-resource transaction skips the resource step.
+      if (names.length === 1) { state.sf.picked = names; return go(SF().detail); }
+      go("stockPick");
+    },
+    "rc-tab"(btn) {
+      state.rc.tab = btn.dataset.tab;
+      rerender(`[data-tab="${btn.dataset.tab}"]`);
+    },
+    "rc-sort-open"() {
+      Object.assign(state.rc, { draft: state.rc.sort, sortOpen: true });
+      rerender('input[name="sf-sort"]:checked');
+    },
+    "rc-sort-clear"() {
+      state.rc.draft = "newest";
+      rerender('input[name="sf-sort"]:checked');
+    },
+    "rc-sort-apply"() {
+      Object.assign(state.rc, { sort: state.rc.draft, sortOpen: false });
+      rerender(".rc-sort");
+    },
+    "rc-open"(btn) {
+      const rc = state.rc;
+      rc.txnId = btn.dataset.id;
+      rc.wasPending = rcTxn().resources.some(r => r.status === "pending");
+      go("stockReceipt");
+    },
+    "rc-confirm"(btn) {
+      Object.assign(state.rc, { resIdx: Number(btn.dataset.r), scans: 0, scanned: false, mismatch: false });
+      go("receiptConfirm");
+    },
+    "rc-report"(btn) {
+      Object.assign(state.rc, { resIdx: Number(btn.dataset.r), rcv: "", reason: "", comment: "", qr: false });
+      go("receiptReport");
+    },
+    "rc-scan-open"() {
+      state.rc.scanned = false;
+      go("receiptScan");
+    },
+    "rc-scan"() { state.rc.scanned = true; rerender('[data-action="rc-scan-add"]'); },
+    "rc-rescan"() { state.rc.scanned = false; rerender('[data-action="rc-scan"]'); },
+    "rc-scan-add"() { state.rc.scans++; back(); },
+    "rc-confirm-submit"() {
+      // As in the inventory app: after scanning, confirm through the quantity-mismatch check.
+      if (!state.rc.scans) return applyReceipt("confirmed");
+      state.rc.mismatch = true;
+      rerender('[data-action="rc-mismatch-confirm"]');
+    },
+    "rc-mismatch-confirm"() { state.rc.mismatch = false; applyReceipt("confirmed"); },
+    "rc-mismatch-back"() { state.rc.mismatch = false; rerender('[data-action="rc-confirm-submit"]'); },
+    "rc-qr"() { state.rc.qr = true; rerender('[data-action="rc-qr"]'); },
+    "rc-report-submit"() {
+      const rc = state.rc;
+      const ok = showErrors({
+        "sf-rcv": partialError(rc.rcv, rcRes().quantity),
+        "sf-reason": rc.reason ? "" : "Select the reason for the discrepancy"
+      });
+      if (ok) { Object.assign(rcRes(), { reason: rc.reason, comment: rc.comment.trim() }); applyReceipt("discrepancy", Number(rc.rcv)); }
+    },
+    "rc-submit"() {
+      const t = rcTxn();
+      const ok = showErrors(Object.fromEntries(t.resources.map((r, i) => [`rc-st-${i}`, r.status === "pending" ? "Confirm the receipt or report a discrepancy" : ""])));
+      if (!ok) return;
+      state.rc.tab = "received";
+      finishStock({ txnId: t.id, resources: t.resources.map(r => ({ ...r })) });
+    },
+    "sf-form-continue"() {
+      const f = state.sf, issue = f.flow === "issue";
+      const ok = showErrors({
+        "sf-res": f.picked.length ? "" : "Select at least one resource",
+        ...Object.fromEntries(f.picked.map(name => {
+          const r = STOCK_RESOURCES[resIndex(name)];
+          return [`sf-qty-${resIndex(name)}`, qtyError(f.qty[name], issue ? r.available : null, `You can issue a maximum of ${r.available} ${r.unit}.`)];
+        })),
+        "sf-to": f.to ? "" : `Select who the stock is ${SF().toLabel.toLowerCase()}`,
+        "sf-vehicle": f.vehicle ? "" : "Select Yes or No"
+      });
+      if (!ok) return;
+      f.resOpen = false;
+      f.vehicle === "Yes" ? go("stockShipment") : finishStock(stockFormRecord());
+    },
+    "sf-ship-submit"() {
+      const f = state.sf;
+      const ok = showErrors({
+        "sf-waybill": f.waybill.trim() ? "" : "Enter the waybill number",
+        "sf-wbcount": !f.wbcount.trim() || /^\d+$/.test(f.wbcount.trim()) ? "" : "Enter a whole number",
+        "sf-transport": f.transport ? "" : "Select the type of transport"
+      });
+      if (ok) finishStock({ ...stockFormRecord(), waybill: f.waybill, wbcount: f.wbcount, transport: f.transport, transportid: f.transportid, comments: f.comments });
+    },
+    "sf-res-open"() {
+      state.sf.resOpen = !state.sf.resOpen;
+      rerender("#sf-res");
+    },
+    "sf-res-remove"(btn) {
+      const name = STOCK_RESOURCES[btn.dataset.i].name, f = state.sf;
+      f.picked = f.picked.filter(n => n !== name);
+      delete f.qty[name];
+      rerender("#sf-res");
+    },
+    "sf-res-clear"() {
+      Object.assign(state.sf, { picked: [], qty: {} });
+      rerender("#sf-res");
+    },
+    "sf-pick-continue"() {
+      if (showErrors({ "sf-res": state.sf.picked.length ? "" : "Select at least one resource" })) go(SF().detail);
+    },
+    "sf-disc-submit"() {
+      const f = state.sf, t = sfTxn();
+      const ok = showErrors(Object.fromEntries(f.picked.flatMap(name => [
+        [`sf-actual-${resIndex(name)}`, discrepancyError(f.actual[name], t.items[name])],
+        isOver(f.actual[name], t.items[name])
+          ? [`sf-why-${resIndex(name)}`, (f.why[name] || "").trim() ? "" : "Enter the reason for the discrepancy"]
+          : [`sf-reason-${resIndex(name)}`, f.reason[name] ? "" : "Select the reason for the discrepancy"]
+      ])));
+      if (ok) finishStock({ txnId: t.id, discrepancies: f.picked.map(n => ({ resource: n, expected: t.items[n], received: f.actual[n],
+        reason: isOver(f.actual[n], t.items[n]) ? f.why[n].trim() : f.reason[n] })) });
+    },
+    "sf-again"() {
+      state.sf = freshSf(state.sf.flow);
+      if (state.rc) state.rc.tab = "pending";
+      state.history = ["home", "manageStock"];
+      go(SF().start, { replace: true });
     },
     "go-home"() {
       state.history = [];
@@ -992,8 +1613,10 @@
 
   $phone.addEventListener("click", e => {
     const btn = e.target.closest("[data-action]");
+    if (state.sf?.resOpen && !e.target.closest(".ms")) { state.sf.resOpen = false; rerender(); }
     if (btn && !btn.disabled) ACTIONS[btn.dataset.action]?.(btn);
     else if (e.target.id === "help-sheet") closeHelp();
+    else if (e.target.classList.contains("sort-backdrop")) { state.rc.sortOpen = false; rerender(".rc-sort"); }
   });
 
   // Form fields write straight into state; re-rendering is avoided so focus is kept.
@@ -1015,6 +1638,8 @@
     "aefi-onset-date": v => (state.aefi.onsetDate = v),
     "aefi-type": v => (state.aefi.type = v),
     "aefi-desc": v => (state.aefi.desc = v),
+    "aefi-form-used": v => (state.aefi.formUsed = v),
+    "aefi-kit-used": v => (state.aefi.kitUsed = v),
   };
 
   function clearError(id) {
@@ -1022,6 +1647,51 @@
     const others = state.errors;
     showErrors({ [id]: "" });
     state.errors = { ...others, [id]: "" };   // keep the other fields' errors so they can still clear
+  }
+
+  // Manage Stock fields: per-resource ids end in the resource's index (sf-qty-1 → AEFI forms).
+  function stockInput(t, key) {
+    const f = state.sf;
+    // Stock Receipt: search, sort choice, and the Report Discrepancy fields.
+    if (key === "sf-search") {
+      state.rc.search = t.value;
+      document.getElementById("rc-list").innerHTML = receiptListHtml();
+      return;
+    }
+    if (key === "sf-sort") { state.rc.draft = t.value; return; }
+    if (key === "sf-rcv" || key === "sf-reason" || key === "sf-comment") {
+      state.rc[key.slice(3)] = t.value;
+      if (key === "sf-rcv") document.getElementById("sf-diff").innerHTML = diffTag(t.value, rcRes().quantity, resUnit(rcRes().name));
+      clearError(key);
+      return;
+    }
+    if (key === "sf-res") {
+      f.picked = t.checked ? [...f.picked, t.value] : f.picked.filter(n => n !== t.value);
+      if (!t.checked) delete f.qty[t.value];
+      clearError("sf-res");
+      // Issue / Return: a picked resource adds its quantity card; the dropdown stays open.
+      if (state.route === "stockForm") rerender(`input[name="sf-res"][value="${CSS.escape(t.value)}"]`);
+      return;
+    }
+    const m = key.match(/^sf-(qty|reason|why|actual)-(\d+)$/);
+    if (m) {
+      const r = STOCK_RESOURCES[m[2]];
+      f[m[1]][r.name] = t.value;
+      if (m[1] === "actual") {
+        const t2 = sfTxn(), over = isOver(t.value, t2.items[r.name]);
+        document.getElementById(`sf-diff-${m[2]}`).innerHTML = diffTag(t.value, t2.items[r.name], r.unit);
+        // More received than expected: swap the damage dropdown for the comment.
+        document.getElementById(`sf-reason-${m[2]}-wrap`).hidden = over;
+        document.getElementById(`sf-why-${m[2]}-wrap`).hidden = !over;
+      }
+    } else {
+      f[key.slice(3)] = t.value;
+    }
+    clearError(key);
+    if (key === "sf-vehicle") {
+      document.getElementById("sf-how-wrap").hidden = t.value !== "No";
+      document.getElementById("sf-form-btn").textContent = t.value === "Yes" ? "Continue" : "Submit";
+    }
   }
 
   $phone.addEventListener("input", e => {
@@ -1032,7 +1702,8 @@
       document.getElementById("create-btn").outerHTML = createBtnHtml();
       return;
     }
-    const key = t.type === "radio" ? t.name : t.id;
+    const key = t.type === "radio" || t.type === "checkbox" ? t.name : t.id;
+    if (key.startsWith("sf-")) return stockInput(t, key);
     // Child name: capital first letter on each word, keeping the caret where it was.
     if (key === "child-name") {
       const pos = t.selectionStart;
@@ -1050,6 +1721,18 @@
         state.stock[`${stockQ.key}Qty`] = "";
         document.getElementById(`${key}-qty`).value = "";
         clearError(`${key}-qty`);
+      }
+      // Its dependent "used" question sits inside the same container; No clears its answer.
+      const dep = STOCK_QUESTIONS.find(q => q.dependsOn === stockQ.key);
+      if (dep) {
+        if (!show) {
+          Object.assign(state.stock, { [dep.key]: "", [`${dep.key}Qty`]: "" });
+          document.querySelectorAll(`input[name="${dep.id}"]`).forEach(i => (i.checked = false));
+          document.getElementById(`${dep.id}-wrap`).hidden = true;
+          document.getElementById(`${dep.id}-qty`).value = "";
+          clearError(dep.id);
+          clearError(`${dep.id}-qty`);
+        }
       }
     }
 
