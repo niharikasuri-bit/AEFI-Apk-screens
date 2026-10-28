@@ -368,12 +368,12 @@
     </div>`;
   }
 
-  function selectField({ id, label, value, options, required }) {
+  function selectField({ id, label, value, options, required, disabled }) {
     const err = state.errors[id];
     return `<div class="field">
       <label class="field-label" for="${id}">${esc(label)}${required ? '<span class="req" aria-hidden="true">*</span>' : ""}</label>
       <div class="select-wrap">
-        <select class="input ${err ? "invalid" : ""}" id="${id}" name="${id}" ${required ? 'aria-required="true"' : ""} aria-invalid="${!!err}" aria-describedby="${id}-err">
+        <select class="input ${err ? "invalid" : ""}" id="${id}" name="${id}" ${disabled ? "disabled" : ""} ${required ? 'aria-required="true"' : ""} aria-invalid="${!!err}" aria-describedby="${id}-err">
           <option value="" ${value ? "" : "selected"}>Select</option>
           ${options.map(o => `<option ${o === value ? "selected" : ""}>${esc(o)}</option>`).join("")}
         </select>${ICON.caret}
@@ -722,7 +722,7 @@
               </div>
             </div>
             ${selectField({ id: "aefi-loc-type", label: "Location type", value: s.locType, options: ["Transit Post", "Outside Household Place"], required: true })}
-            ${kind ? selectField({ id: "aefi-loc", label: KINDS[kind].nameLabel, value: s.location, options: allLocations(kind).map(l => l.name), required: true }) : ""}
+            ${selectField({ id: "aefi-loc", label: "Location name", value: s.location, options: kind ? allLocations(kind).map(l => l.name) : [], required: true, disabled: !kind })}
             ${state.locFor === "aefi" ? textField({ id: "aefi-referred", label: "Referred by (CDD team code)", value: s.referredBy })
               : textField({ id: "stk-recorded-by", label: "Recorded by (CDD team code)", value: s.recordedBy })}
           </div>`,

@@ -510,3 +510,7 @@ body { display: flex; align-items: center; justify-content: center; min-height: 
 .stock-section + .stock-list { margin-top: 0; }
 .body-manageStock { padding-bottom: 40px; }
 
+
+/* Disabled dropdown (Location name until a location type is picked) */
+select.input:disabled { background: var(--paper-2); color: var(--text-2); border-color: #B1B4B6; cursor: not-allowed; }
+.select-wrap:has(select:disabled) svg { color: #B1B4B6; }
